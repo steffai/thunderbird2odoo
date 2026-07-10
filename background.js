@@ -14,7 +14,7 @@ const MENU_ID_FIND = "send-to-odoo-find";
 const menuIds = new Set();
 menuIds.add(MENU_ID_FIND);
 
-function notify(title, message) {
+function notify(title, message, sticky = false) {
   console.debug(title + ": " + message);
   // Use a unique id per notification so a later one does not replace an
   // earlier one (e.g. a failure right after a success).
@@ -23,7 +23,19 @@ function notify(title, message) {
     iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
     title: title,
     message: message,
+    // sticky: keep the notification visible until the user dismisses it
+    ...(sticky ? { priority: 2 } : {}),
   });
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    console.warn("clipboard write failed:", err);
+    return false;
+  }
 }
 
 async function get_config() {
@@ -154,12 +166,13 @@ async function handleFindInOdoo(info) {
     if (!result.found) {
       notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
     } else if (result.url) {
+      const copied = await copyToClipboard(result.url);
       if (result.is_unattached) {
-        notify("Odoo", "Email found in Lost Messages:\n" + result.url);
+        notify("Odoo", "Email found in Lost Messages:\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
       } else if (result.model) {
-        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + ":\n" + result.url);
+        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + ":\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
       } else {
-        notify("Odoo", "Email found in Odoo:\n" + result.url);
+        notify("Odoo", "Email found in Odoo:\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
       }
     } else {
       notify("Odoo", "Email found in Odoo (message " + result.message_id + ") but no URL available");
