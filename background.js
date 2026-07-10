@@ -182,30 +182,38 @@ function extractPredecessorIds(rawMail) {
   return ids;
 }
 
-function waitForNotificationButton(notificationId, timeout = 60000) {
+async function showDialog(title, message, buttons = []) {
+  const params = new URLSearchParams({
+    title,
+    message,
+    buttons: JSON.stringify(buttons),
+  });
+  const url = browser.runtime.getURL("dialog.html?" + params);
+  const win = await browser.windows.create({
+    url: url,
+    type: "popup",
+    width: 480,
+    height: 160,
+  });
   return new Promise((resolve) => {
     const cleanup = () => {
-      browser.notifications.onButtonClicked.removeListener(btnListener);
-      browser.notifications.onClosed.removeListener(closeListener);
+      browser.runtime.onMessage.removeListener(msgListener);
+      browser.windows.onRemoved.removeListener(closeListener);
     };
-    const btnListener = (id, btnIdx) => {
-      if (id === notificationId) {
+    const msgListener = (msg) => {
+      if (msg.action === "dialogChoice" && msg.windowId === win.id) {
         cleanup();
-        resolve(btnIdx);
+        resolve(msg.choice);
       }
     };
-    const closeListener = (id) => {
-      if (id === notificationId) {
+    const closeListener = (windowId) => {
+      if (windowId === win.id) {
         cleanup();
         resolve(-1);
       }
     };
-    browser.notifications.onButtonClicked.addListener(btnListener);
-    browser.notifications.onClosed.addListener(closeListener);
-    setTimeout(() => {
-      cleanup();
-      resolve(-1);
-    }, timeout);
+    browser.runtime.onMessage.addListener(msgListener);
+    browser.windows.onRemoved.addListener(closeListener);
   });
 }
 
@@ -281,16 +289,11 @@ async function handleOdooImporter(info) {
 
     if (predFound?.status === "found") {
       const url = buildUrl(cfg, predFound.model, predFound.thread_id, predFound.message_id, predFound.is_unattached);
-      const notifId = "predecessor-found-" + Date.now();
-      await browser.notifications.create(notifId, {
-        type: "basic",
-        iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
-        title: "Odoo Email Importer",
-        message: "Predecessor email found" + (url ? " at " + url : "") + ". Import this email?",
-        buttons: [{ title: "Import" }, { title: "Cancel" }],
-        priority: 2,
-      });
-      const btnIdx = await waitForNotificationButton(notifId);
+      const btnIdx = await showDialog(
+        "Odoo Email Importer",
+        "Predecessor email found" + (url ? " at " + url : "") + ". Import this email?",
+        [{ title: "Import", value: 0 }, { title: "Cancel", value: -1 }],
+      );
       if (btnIdx === 0) {
         const importResult = await uploadMail(cfg, rawMail);
         const normalized = normalizeResult(importResult);
@@ -300,16 +303,11 @@ async function handleOdooImporter(info) {
     }
 
     // Step 3: No predecessor found — offer import options
-    const notifId = "import-choice-" + Date.now();
-    await browser.notifications.create(notifId, {
-      type: "basic",
-      iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
-      title: "Odoo Email Importer",
-      message: "Import this email?",
-      buttons: [{ title: "As CRM Lead" }, { title: "As Lost Message" }],
-      priority: 2,
-    });
-    const btnIdx = await waitForNotificationButton(notifId);
+    const btnIdx = await showDialog(
+      "Odoo Email Importer",
+      "This email and its predecessor are not in Odoo. How do you want to import it?",
+      [{ title: "As CRM Lead", value: 0 }, { title: "As Lost Message", value: 1 }],
+    );
     if (btnIdx === 0) {
       const importResult = await uploadMail(cfg, rawMail, "crm.lead");
       const normalized = normalizeResult(importResult, "crm.lead");
