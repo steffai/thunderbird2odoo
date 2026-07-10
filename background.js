@@ -154,14 +154,12 @@ async function handleFindInOdoo(info) {
     if (!result.found) {
       notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
     } else if (result.url) {
-      // Open the Odoo record URL in the system browser
-      await browser.windows.openDefaultBrowser(result.url);
       if (result.is_unattached) {
-        notify("Odoo", "Email found in Lost Messages — opening in browser");
+        notify("Odoo", "Email found in Lost Messages:\n" + result.url);
       } else if (result.model) {
-        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + " — opening in browser");
+        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + ":\n" + result.url);
       } else {
-        notify("Odoo", "Email found in Odoo — opening in browser");
+        notify("Odoo", "Email found in Odoo:\n" + result.url);
       }
     } else {
       notify("Odoo", "Email found in Odoo (message " + result.message_id + ") but no URL available");
