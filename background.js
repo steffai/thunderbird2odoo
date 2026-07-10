@@ -137,21 +137,44 @@ browser.menus.onClicked.addListener(async (info) => {
 
     const import_result = await uploadMail(cfg, rawMail, model);
 
-    if (!model) {
-      notify("Odoo", "Email successfully transferred to Odoo");
-    } else if (import_result) {
+    // message_process returns:
+    //   - thread_id (int): success, new or updated record
+    //   - false: duplicate, Message-Id already exists
+    //   - null: email was ignored (loop detection, bounce, no route)
+    if (import_result) {
+      if (model) {
+        notify(
+          "Odoo",
+          "Email successfully transferred to Odoo as " +
+            model +
+            " " +
+            import_result,
+        );
+      } else {
+        notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
+      }
+    } else if (import_result === false) {
       notify(
         "Odoo",
-        "Email successfully transferred to Odoo as " +
-          model +
-          " " +
-          import_result,
+        "Email not imported: duplicate (Message-Id already exists in Odoo)",
       );
     } else {
-      notify(
-        "Odoo",
-        "Failed to import Email as " + model + ". Maybe it is already present?",
-      );
+      // null: no route found, loop detection, or bounce
+      if (model) {
+        notify(
+          "Odoo",
+          "Failed to import Email as " +
+            model +
+            ". Maybe it is already present?",
+        );
+      } else {
+        notify(
+          "Odoo",
+          "Email not imported: no matching route found in Odoo. " +
+            "Consider installing the 'mail_manual_routing' extension " +
+            "or importing as 'CRM Lead' instead.",
+        );
+      }
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to send email: " + err.message);
