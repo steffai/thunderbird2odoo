@@ -3,7 +3,7 @@
  * Odoo >= 19
  ********************************************************************/
 
-import { testOdooConnection, getConnectionInfo, findMail } from "./lib/odooClient.js";
+import { testOdooConnection, getConnectionInfo, findMail, buildUrl } from "./lib/odooClient.js";
 import { uploadMail, decodeRawMail } from "./lib/odooMailUpload.js";
 
 const MENU_ID_PREFIX = "send-to-odoo";
@@ -90,7 +90,11 @@ function buildNotification(prefix, r) {
 }
 
 // Show a notification from a unified result dict, with clipboard + sticky.
-async function showResult(prefix, r, sticky = false) {
+async function showResult(prefix, r, cfg, sticky = false) {
+  // Build URL if not already present (import_mail doesn't include url)
+  if (!r.url) {
+    r.url = buildUrl(cfg, r.model, r.thread_id, r.message_id, r.is_unattached);
+  }
   const n = buildNotification(prefix, r);
   let message = n.message;
   if (r.url) {
@@ -230,7 +234,7 @@ async function handleFindInOdoo(info) {
     if (result.status === "not_found") {
       notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
     } else {
-      await showResult("Email found", result, true);
+      await showResult("Email found", result, cfg, true);
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to find email: " + err.message);
@@ -289,12 +293,12 @@ browser.menus.onClicked.addListener(async (info) => {
         if (msgId) {
           const found = await findMail(cfg, msgId);
           if (found.status === "found") {
-            await showResult("Email already in Odoo (duplicate)", found);
+            await showResult("Email already in Odoo (duplicate)", found, cfg);
             return;
           }
         }
       }
-      await showResult("Email successfully transferred", import_result);
+      await showResult("Email successfully transferred", import_result, cfg);
     } else {
       // message_process fallback (unmodified Odoo)
       if (import_result) {
@@ -310,7 +314,7 @@ browser.menus.onClicked.addListener(async (info) => {
           try {
             const found = await findMail(cfg, msgId);
             if (found.status === "found") {
-              await showResult("Email already in Odoo (duplicate)", found);
+              await showResult("Email already in Odoo (duplicate)", found, cfg);
               return;
             }
           } catch (_) {}
