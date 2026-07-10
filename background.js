@@ -38,6 +38,65 @@ async function copyToClipboard(text) {
   }
 }
 
+// Build notification title and message from a unified result dict
+// (returned by both import_mail and find_mail).
+// Returns {title, message} or null if no notification should be shown.
+function buildNotification(prefix, r) {
+  let title = "Odoo";
+  let message = "";
+
+  switch (r.status) {
+    case "ok":
+    case "found":
+      if (r.is_unattached) {
+        title = "Odoo – Lost Messages";
+        message = prefix + " in Lost Messages";
+      } else if (r.model) {
+        title = "Odoo – " + r.model + " " + (r.thread_id || "");
+        message = prefix;
+      } else {
+        message = prefix + " (thread " + (r.thread_id || "?") + ")";
+      }
+      break;
+    case "lost":
+      title = "Odoo – Lost Messages";
+      message = prefix + " to Lost Messages";
+      break;
+    case "duplicate":
+      message = "Email not imported: Message-Id already exists in Odoo (duplicate)";
+      break;
+    case "ignored":
+      message = "Email not imported: ignored by Odoo (loop detection or bounce)";
+      break;
+    case "not_found":
+      message = "Email not found in Odoo";
+      break;
+    default:
+      message = prefix + " (status: " + r.status + ")";
+  }
+
+  if (r.url) {
+    message += "\n" + r.url;
+  } else if (r.message_id) {
+    message += " (message " + r.message_id + ")";
+  }
+
+  return { title, message };
+}
+
+// Show a notification from a unified result dict, with clipboard + sticky.
+async function showResult(prefix, r, sticky = false) {
+  const n = buildNotification(prefix, r);
+  let message = n.message;
+  if (r.url) {
+    const copied = await copyToClipboard(r.url);
+    if (copied) {
+      message += "\nURL copied to clipboard";
+    }
+  }
+  notify(n.title, message, sticky);
+}
+
 async function get_config() {
   // load Odoo config from options
   const cfg = await browser.storage.local.get([
@@ -165,17 +224,8 @@ async function handleFindInOdoo(info) {
 
     if (!result.found) {
       notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
-    } else if (result.url) {
-      const copied = await copyToClipboard(result.url);
-      let title = "Odoo";
-      if (result.is_unattached) {
-        title = "Odoo – Lost Messages";
-      } else if (result.model) {
-        title = "Odoo – " + result.model + " " + result.thread_id;
-      }
-      notify(title, result.url + (copied ? "\ncopied to clipboard" : ""), true);
     } else {
-      notify("Odoo", "Email found in Odoo (message " + result.message_id + ") but no URL available");
+      await showResult("Email found", result, true);
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to find email: " + err.message);
@@ -224,28 +274,11 @@ browser.menus.onClicked.addListener(async (info) => {
     const import_result = await uploadMail(cfg, rawMail, model);
 
     // uploadMail returns either:
-    //   - a dict from import_mail: {status, model, thread_id, message_id}
+    //   - a dict from import_mail: {status, model, thread_id, message_id, is_unattached, url}
     //   - a raw value from message_process: thread_id (int), false, null
     if (typeof import_result === "object" && import_result !== null) {
       // import_mail path (mail_manual_routing installed)
-      const r = import_result;
-      if (r.status === "ok") {
-        if (r.model) {
-          notify("Odoo", "Email successfully transferred to Odoo as " + r.model + " " + r.thread_id);
-        } else {
-          notify("Odoo", "Email successfully transferred to Odoo (thread " + r.thread_id + ")");
-        }
-      } else if (r.status === "lost") {
-        if (r.message_id) {
-          notify("Odoo", "Email imported to Lost Messages (message " + r.message_id + ")");
-        } else {
-          notify("Odoo", "Email imported to Lost Messages (thread " + r.thread_id + ")");
-        }
-      } else if (r.status === "duplicate") {
-        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
-      } else {
-        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
-      }
+      await showResult("Email successfully transferred", import_result);
     } else {
       // message_process fallback (unmodified Odoo)
       if (import_result) {
