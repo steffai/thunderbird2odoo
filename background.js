@@ -168,11 +168,11 @@ async function handleFindInOdoo(info) {
     } else if (result.url) {
       const copied = await copyToClipboard(result.url);
       if (result.is_unattached) {
-        notify("Odoo", "Email found in Lost Messages:\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
+        notify("Odoo", "Email found in Lost Messages:\n" + result.url + (copied ? "\n\n(URL copied to clipboard)" : ""), true);
       } else if (result.model) {
-        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + ":\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
+        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + ":\n" + result.url + (copied ? "\n\n(URL copied to clipboard)" : ""), true);
       } else {
-        notify("Odoo", "Email found in Odoo:\n" + result.url + (copied ? "\n(URL copied to clipboard)" : ""), true);
+        notify("Odoo", "Email found in Odoo:\n" + result.url + (copied ? "\n\n(URL copied to clipboard)" : ""), true);
       }
     } else {
       notify("Odoo", "Email found in Odoo (message " + result.message_id + ") but no URL available");
