@@ -8,6 +8,10 @@ import { uploadMail } from "./lib/odooMailUpload.js";
 
 const MENU_ID_PREFIX = "send-to-odoo";
 
+// Menu ids created by setup(), used by onShown to toggle visibility
+// based on how many messages are currently selected.
+const menuIds = new Set();
+
 function notify(title, message) {
   console.log(title + ": " + message);
   browser.notifications.create("thunderbird2odooNotifyId", {
@@ -32,6 +36,7 @@ async function get_config() {
 
 async function setup() {
   browser.menus.removeAll();
+  menuIds.clear();
   const cfg = await get_config();
   try {
     await testOdooConnection(cfg);
@@ -62,8 +67,20 @@ async function setup() {
         128: "icons/odoo-128.png",
       },
     });
+    menuIds.add(id);
   }
 }
+
+// Only show the import menu items when exactly one email is selected.
+// This gives the user direct feedback that multi-selection is not supported.
+browser.menus.onShown.addListener((info) => {
+  const selectedCount = info.selectedMessages?.messages?.length ?? 0;
+  const visible = selectedCount === 1;
+  for (const id of menuIds) {
+    browser.menus.update(id, { visible: visible });
+  }
+  browser.menus.refresh();
+});
 
 // handle menu click
 browser.menus.onClicked.addListener(async (info) => {
@@ -75,12 +92,12 @@ browser.menus.onClicked.addListener(async (info) => {
     model = false;
   }
 
-  const message = info.selectedMessages?.messages?.[0];
-  if (!message) {
-    throw new Error("Select exactly one email");
-  }
-
   try {
+    const message = info.selectedMessages?.messages?.[0];
+    if (!message) {
+      throw new Error("Select exactly one email");
+    }
+
     // get raw email
     const rawMail = await messenger.messages.getRaw(message.id);
 

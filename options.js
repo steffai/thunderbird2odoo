@@ -74,12 +74,12 @@ testBtn.addEventListener("click", async () => {
     config: cfg,
   });
 
-  if (result.ok) {
+  if (result?.ok) {
     lastValidHash = hash(cfg);
     status.textContent = "Connection successful";
     saveBtn.disabled = false;
   } else {
-    status.textContent = "Failed: " + result.error;
+    status.textContent = "Failed: " + (result?.error || "unknown error");
   }
 });
 
@@ -98,5 +98,9 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
     action: "setup",
   });
 
-  status.textContent = "Settings saved";
+  if (result?.ok) {
+    status.textContent = "Settings saved";
+  } else {
+    status.textContent = "Saved, but setup failed: " + (result?.error || "unknown error");
+  }
 });
