@@ -23,6 +23,13 @@ function hash(cfg) {
   return JSON.stringify(cfg);
 }
 
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, (c) => {
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return map[c];
+  });
+}
+
 function invalidate() {
   lastValidHash = null;
   saveBtn.disabled = true;
@@ -66,6 +73,26 @@ testBtn.addEventListener("click", async () => {
     return;
   }
 
+// Request host permission so fetch() can bypass CORS. This must be the
+  // first await in the click handler: permissions.request() may only be
+  // called from a user input handler, and any prior await breaks that
+  // context. If the permission is already granted, request() returns true
+  // without prompting.
+  // We request the broad *://*/* pattern because origin-specific patterns
+  // with ports (e.g. http://localhost:8019/*) don't properly grant CORS
+  // bypass in Thunderbird. Unlike <all_urls> in permissions (granted at
+  // install time without consent), this is optional_permissions and the
+  // user is explicitly prompted.
+  const granted = await browser.permissions.request({
+    origins: ["*://*/*"],
+  });
+  if (!granted) {
+    status.textContent =
+      "Host permission is required to connect to your Odoo server";
+    return;
+  }
+  console.debug("testConnection: host permission granted");
+
   status.textContent = "Testing connection…";
   saveBtn.disabled = true;
 
@@ -74,12 +101,23 @@ testBtn.addEventListener("click", async () => {
     config: cfg,
   });
 
-  if (result.ok) {
+  if (result?.ok) {
     lastValidHash = hash(cfg);
-    status.textContent = "Connection successful";
     saveBtn.disabled = false;
+
+    // build a detailed status message from connection info
+    const info = result.info;
+    let html = "Connection successful";
+    if (info?.userInfo) {
+      const u = info.userInfo;
+      html += " as <code>" + escapeHtml(u.login) + "</code>";
+      if (u.name) {
+        html += " (" + escapeHtml(u.name) + ")";
+      }
+    }
+    status.innerHTML = html;
   } else {
-    status.textContent = "Failed: " + result.error;
+    status.textContent = "Failed: " + (result?.error || "unknown error");
   }
 });
 
@@ -98,5 +136,9 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
     action: "setup",
   });
 
-  status.textContent = "Settings saved";
+  if (result?.ok) {
+    status.textContent = "Settings saved";
+  } else {
+    status.textContent = "Saved, but setup failed: " + (result?.error || "unknown error");
+  }
 });

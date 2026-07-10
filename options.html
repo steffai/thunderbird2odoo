@@ -3,6 +3,45 @@
   <head>
     <meta charset="utf-8" />
     <title>Odoo Email Importer – Settings</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: inline-block;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 0.3rem;
+        box-sizing: border-box;
+      }
+      fieldset {
+        margin: 1rem 0;
+      }
+      button {
+        padding: 0.4rem 1rem;
+        margin-right: 0.5rem;
+      }
+      #status {
+        margin-top: 1rem;
+        min-height: 1.2em;
+        white-space: pre-line;
+      }
+      #status code {
+        font-family: monospace;
+        background: #e8e8e8;
+        padding: 0.1em 0.3em;
+        border-radius: 3px;
+      }
+      .footnote {
+        font-size: 0.85em;
+        color: #666;
+      }
+    </style>
   </head>
   <body>
     <h2>Odoo Connection</h2>
@@ -40,6 +79,14 @@
           CRM Lead </label
         ><br />
       </fieldset>
+
+      <p class="footnote">
+        * <em>Generic</em> imports may require the
+        <a href=https://apps.odoo.com/apps/modules/19.0/mail_manual_routing>
+        Lost Messages Routing</a> Odoo extension,
+        otherwise imported emails might not be visible.
+        <em>CRM Lead</em> imports will work in standard Odoo installations.
+      </p>
 
       <button id="test" type="button">Test connection</button>
       <button id="save" type="submit" disabled>Save</button>

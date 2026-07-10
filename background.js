@@ -3,16 +3,21 @@
  * Odoo >= 19
  ********************************************************************/
 
-import { testOdooConnection } from "./lib/odooClient.js";
+import { testOdooConnection, getConnectionInfo } from "./lib/odooClient.js";
 import { uploadMail } from "./lib/odooMailUpload.js";
 
 const MENU_ID_PREFIX = "send-to-odoo";
 
+// Menu ids created by setup(), used by onShown to toggle visibility
+// based on how many messages are currently selected.
+const menuIds = new Set();
+
 function notify(title, message) {
-  console.log(title + ": " + message);
-  browser.notifications.create("thunderbird2odooNotifyId", {
+  console.debug(title + ": " + message);
+  // Use a unique id per notification so a later one does not replace an
+  // earlier one (e.g. a failure right after a success).
+  browser.notifications.create("thunderbird2odoo-" + Date.now(), {
     type: "basic",
-    //"thunderbird2odoo.svg",
     iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
     title: title,
     message: message,
@@ -32,12 +37,30 @@ async function get_config() {
 
 async function setup() {
   browser.menus.removeAll();
+  menuIds.clear();
   const cfg = await get_config();
-  try {
-    await testOdooConnection(cfg);
-  } catch (err) {
-    console.log("setup error: " + err);
+
+  if (!cfg.url || !cfg.apikey) {
+    // not configured yet, empty menus, nothing to do
     return;
+  }
+
+  const hasPermission = await browser.permissions.contains({
+    origins: ["*://*/*"],
+  });
+  if (hasPermission) {
+    try {
+      await testOdooConnection(cfg);
+    } catch (err) {
+      console.warn(
+        "setup: connection test failed, menus still created:",
+        err,
+      );
+    }
+  } else {
+    console.debug(
+      "setup: host permission not granted yet, skipping connection test",
+    );
   }
 
   for (const item of cfg.models) {
@@ -62,8 +85,20 @@ async function setup() {
         128: "icons/odoo-128.png",
       },
     });
+    menuIds.add(id);
   }
 }
+
+// Only show the import menu items when exactly one email is selected.
+// This gives the user direct feedback that multi-selection is not supported.
+browser.menus.onShown.addListener((info) => {
+  const selectedCount = info.selectedMessages?.messages?.length ?? 0;
+  const visible = selectedCount === 1;
+  for (const id of menuIds) {
+    browser.menus.update(id, { visible: visible });
+  }
+  browser.menus.refresh();
+});
 
 // handle menu click
 browser.menus.onClicked.addListener(async (info) => {
@@ -75,12 +110,25 @@ browser.menus.onClicked.addListener(async (info) => {
     model = false;
   }
 
-  const message = info.selectedMessages?.messages?.[0];
-  if (!message) {
-    throw new Error("Select exactly one email");
-  }
-
   try {
+    const message = info.selectedMessages?.messages?.[0];
+    if (!message) {
+      throw new Error("Select exactly one email");
+    }
+
+    // Check host permission before attempting any fetch. Without it,
+    // fetch() fails with a cryptic NetworkError (CORS). This guides
+    // upgrading users who had <all_urls> in the old version but need
+    // to grant the optional permission in the new version.
+    const hasPermission = await browser.permissions.contains({
+      origins: ["*://*/*"],
+    });
+    if (!hasPermission) {
+      throw new Error(
+        "Host permission not granted. Open the add-on options and click 'Test connection' to grant access.",
+      );
+    }
+
     // get raw email
     const rawMail = await messenger.messages.getRaw(message.id);
 
@@ -89,21 +137,38 @@ browser.menus.onClicked.addListener(async (info) => {
 
     const import_result = await uploadMail(cfg, rawMail, model);
 
-    if (!model) {
-      notify("Odoo", "Email successfully transferred to Odoo");
-    } else if (import_result) {
-      notify(
-        "Odoo",
-        "Email successfully transferred to Odoo as " +
-          model +
-          " " +
-          import_result,
-      );
+    // uploadMail returns either:
+    //   - a dict from import_mail: {status, model, thread_id, message_id}
+    //   - a raw value from message_process: thread_id (int), false, null
+    if (typeof import_result === "object" && import_result !== null) {
+      // import_mail path (mail_manual_routing installed)
+      const r = import_result;
+      if (r.status === "ok") {
+        if (r.model) {
+          notify("Odoo", "Email successfully transferred to Odoo as " + r.model + " " + r.thread_id);
+        } else {
+          notify("Odoo", "Email successfully transferred to Odoo (thread " + r.thread_id + ")");
+        }
+      } else if (r.status === "lost") {
+        notify("Odoo", "Email imported to Lost Messages (message " + r.message_id + ")");
+      } else if (r.status === "duplicate") {
+        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
+      } else {
+        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
+      }
     } else {
-      notify(
-        "Odoo",
-        "Failed to import Email as " + model + ". Maybe it is already present?",
-      );
+      // message_process fallback (unmodified Odoo)
+      if (import_result) {
+        if (model) {
+          notify("Odoo", "Email successfully transferred to Odoo as " + model + " " + import_result);
+        } else {
+          notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
+        }
+      } else if (import_result === false) {
+        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
+      } else {
+        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
+      }
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to send email: " + err.message);
@@ -114,8 +179,8 @@ browser.menus.onClicked.addListener(async (info) => {
 browser.runtime.onMessage.addListener(async (msg) => {
   try {
     if (msg.action === "testConnection") {
-      await testOdooConnection(msg.config);
-      return { ok: true };
+      const info = await getConnectionInfo(msg.config);
+      return { ok: true, info };
     }
 
     if (msg.action === "setup") {

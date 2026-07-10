@@ -1,0 +1,16 @@
+{
+  "name": "odoo-email-importer",
+  "version": "0.4.0",
+  "description": "Thunderbird MailExtension to import emails into Odoo (>=19)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "make check-js",
+    "format": "prettier --write \"**/*.js\" \"**/*.html\" \"**/*.json\" \"!dist/**\" \"!node_modules/**\"",
+    "format:check": "prettier --check \"**/*.js\" \"**/*.html\" \"**/*.json\" \"!dist/**\" \"!node_modules/**\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.0"
+  }
+}
