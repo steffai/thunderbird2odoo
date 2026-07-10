@@ -6,24 +6,18 @@
 import { testOdooConnection, getConnectionInfo, findMail, buildUrl } from "./lib/odooClient.js";
 import { uploadMail, decodeRawMail } from "./lib/odooMailUpload.js";
 
-const MENU_ID_PREFIX = "send-to-odoo";
-const MENU_ID_FIND = "send-to-odoo-find";
+const MENU_ID_IMPORTER = "odoo-importer";
 
-// Menu ids created by setup(), used by onShown to toggle visibility
-// based on how many messages are currently selected.
 const menuIds = new Set();
-menuIds.add(MENU_ID_FIND);
+menuIds.add(MENU_ID_IMPORTER);
 
 function notify(title, message, sticky = false) {
   console.debug(title + ": " + message);
-  // Use a unique id per notification so a later one does not replace an
-  // earlier one (e.g. a failure right after a success).
   browser.notifications.create("thunderbird2odoo-" + Date.now(), {
     type: "basic",
     iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
     title: title,
     message: message,
-    // sticky: keep the notification visible until the user dismisses it
     ...(sticky ? { priority: 2 } : {}),
   });
 }
@@ -38,9 +32,6 @@ async function copyToClipboard(text) {
   }
 }
 
-// Build notification title and message from a unified result dict
-// (returned by both import_mail and find_mail).
-// Returns {title, message} or null if no notification should be shown.
 function buildNotification(prefix, r) {
   let title = "Odoo";
   let message = "";
@@ -89,9 +80,7 @@ function buildNotification(prefix, r) {
   return { title, message };
 }
 
-// Show a notification from a unified result dict, with clipboard + sticky.
 async function showResult(prefix, r, cfg, sticky = false) {
-  // Build URL if not already present (import_mail doesn't include url)
   if (!r.url) {
     r.url = buildUrl(cfg, r.model, r.thread_id, r.message_id, r.is_unattached);
   }
@@ -107,23 +96,16 @@ async function showResult(prefix, r, cfg, sticky = false) {
 }
 
 async function get_config() {
-  // load Odoo config from options
-  const cfg = await browser.storage.local.get([
-    "url",
-    "db",
-    "apikey",
-    "models",
-  ]);
-  return cfg;
+  return browser.storage.local.get(["url", "db", "apikey"]);
 }
 
 async function setup() {
   browser.menus.removeAll();
   menuIds.clear();
+
   const cfg = await get_config();
 
   if (!cfg.url || !cfg.apikey) {
-    // not configured yet, empty menus, nothing to do
     return;
   }
 
@@ -145,10 +127,9 @@ async function setup() {
     );
   }
 
-  // "Find in Odoo" menu item — created first so it appears at the top
   browser.menus.create({
-    id: MENU_ID_FIND,
-    title: "Find Email in Odoo",
+    id: MENU_ID_IMPORTER,
+    title: "Odoo Email Importer",
     contexts: ["message_list"],
     icons: {
       16: "icons/odoo-16.png",
@@ -158,35 +139,9 @@ async function setup() {
       128: "icons/odoo-128.png",
     },
   });
-
-  for (const item of cfg.models) {
-    let model = false;
-    let id = MENU_ID_PREFIX;
-    let title = "Import Email into Odoo";
-    if (item !== "false") {
-      model = item;
-      id = MENU_ID_PREFIX + "-" + model;
-      title = "Import Email into Odoo as " + model;
-    }
-    // create a context menu
-    browser.menus.create({
-      id: id,
-      title: title,
-      contexts: ["message_list"],
-      icons: {
-        16: "icons/odoo-16.png",
-        32: "icons/odoo-32.png",
-        48: "icons/odoo-48.png",
-        96: "icons/odoo-96.png",
-        128: "icons/odoo-128.png",
-      },
-    });
-    menuIds.add(id);
-  }
+  menuIds.add(MENU_ID_IMPORTER);
 }
 
-// Only show the import menu items when exactly one email is selected.
-// This gives the user direct feedback that multi-selection is not supported.
 browser.menus.onShown.addListener((info) => {
   const selectedCount = info.selectedMessages?.messages?.length ?? 0;
   const visible = selectedCount === 1;
@@ -196,15 +151,94 @@ browser.menus.onShown.addListener((info) => {
   browser.menus.refresh();
 });
 
-// Extract the Message-Id header from a raw RFC822 email
 function extractMessageId(rawMail) {
   const decoded = decodeRawMail(rawMail);
   const match = decoded.match(/^Message-ID:\s*<[^>]+>/im);
   return match ? match[0].replace(/^Message-ID:\s*/i, "") : null;
 }
 
-// Handle "Find in Odoo" menu click
-async function handleFindInOdoo(info) {
+function extractPredecessorIds(rawMail) {
+  const decoded = decodeRawMail(rawMail);
+  const ids = [];
+
+  const irtMatch = decoded.match(/^In-Reply-To:\s*<[^>]+>/im);
+  if (irtMatch) {
+    ids.push(irtMatch[0].replace(/^In-Reply-To:\s*/i, "").trim());
+  }
+
+  const refsMatch = decoded.match(/^References:\s*(.+)$/im);
+  if (refsMatch) {
+    const refIds = refsMatch[1].match(/<[^>]+>/g);
+    if (refIds) {
+      for (let i = refIds.length - 1; i >= 0; i--) {
+        const trimmed = refIds[i].trim();
+        if (!ids.includes(trimmed)) {
+          ids.push(trimmed);
+        }
+      }
+    }
+  }
+
+  return ids;
+}
+
+function waitForNotificationButton(notificationId, timeout = 60000) {
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      browser.notifications.onButtonClicked.removeListener(btnListener);
+      browser.notifications.onClosed.removeListener(closeListener);
+    };
+    const btnListener = (id, btnIdx) => {
+      if (id === notificationId) {
+        cleanup();
+        resolve(btnIdx);
+      }
+    };
+    const closeListener = (id) => {
+      if (id === notificationId) {
+        cleanup();
+        resolve(-1);
+      }
+    };
+    browser.notifications.onButtonClicked.addListener(btnListener);
+    browser.notifications.onClosed.addListener(closeListener);
+    setTimeout(() => {
+      cleanup();
+      resolve(-1);
+    }, timeout);
+  });
+}
+
+function normalizeResult(result, model) {
+  if (typeof result === "object" && result !== null) {
+    return result;
+  }
+  if (result) {
+    return { status: "ok", model: model || false, thread_id: result, message_id: false, is_unattached: false };
+  }
+  if (result === false) {
+    return { status: "duplicate", model: model || false, thread_id: false, message_id: false, is_unattached: false };
+  }
+  return { status: "ignored", model: model || false, thread_id: false, message_id: false, is_unattached: false };
+}
+
+async function showImportResult(cfg, rawMail, normalized, prefix) {
+  if (normalized.status === "duplicate") {
+    const msgId = extractMessageId(rawMail);
+    if (msgId) {
+      try {
+        const found = await findMail(cfg, msgId);
+        if (found.status === "found") {
+          await showResult("Email already in Odoo (duplicate)", found, cfg, true);
+          return;
+        }
+      } catch (_) {}
+    }
+  }
+  await showResult(prefix, normalized, cfg, true);
+}
+
+async function handleOdooImporter(info) {
   try {
     const message = info.selectedMessages?.messages?.[0];
     if (!message) {
@@ -225,111 +259,77 @@ async function handleFindInOdoo(info) {
     if (!messageId) {
       throw new Error("Could not extract Message-Id from email");
     }
-    console.debug("findInOdoo: looking up Message-Id " + messageId);
+    console.debug("handleOdooImporter: Message-Id=" + messageId);
 
     const cfg = await get_config();
-    const result = await findMail(cfg, messageId);
-    console.debug("findInOdoo: result=" + JSON.stringify(result));
 
-    if (result.status === "not_found") {
-      notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
-    } else {
-      await showResult("Email found", result, cfg, true);
+    // Step 1: Find the email itself in Odoo
+    const result = await findMail(cfg, messageId);
+    if (result.status === "found") {
+      await showResult("Email found in Odoo", result, cfg, true);
+      return;
+    }
+
+    // Step 2: Not found — check predecessor(s) from In-Reply-To / References
+    const predecessorIds = extractPredecessorIds(rawMail);
+    let predFound = null;
+    for (const pid of predecessorIds) {
+      console.debug("Checking predecessor: " + pid);
+      predFound = await findMail(cfg, pid);
+      if (predFound.status === "found") break;
+    }
+
+    if (predFound?.status === "found") {
+      const url = buildUrl(cfg, predFound.model, predFound.thread_id, predFound.message_id, predFound.is_unattached);
+      const notifId = "predecessor-found-" + Date.now();
+      await browser.notifications.create(notifId, {
+        type: "basic",
+        iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
+        title: "Odoo Email Importer",
+        message: "Predecessor email found" + (url ? " at " + url : "") + ". Import this email?",
+        buttons: [{ title: "Import" }, { title: "Cancel" }],
+        priority: 2,
+      });
+      const btnIdx = await waitForNotificationButton(notifId);
+      if (btnIdx === 0) {
+        const importResult = await uploadMail(cfg, rawMail);
+        const normalized = normalizeResult(importResult);
+        await showImportResult(cfg, rawMail, normalized, "Email imported");
+      }
+      return;
+    }
+
+    // Step 3: No predecessor found — offer import options
+    const notifId = "import-choice-" + Date.now();
+    await browser.notifications.create(notifId, {
+      type: "basic",
+      iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
+      title: "Odoo Email Importer",
+      message: "Import this email?",
+      buttons: [{ title: "As CRM Lead" }, { title: "As Lost Message" }],
+      priority: 2,
+    });
+    const btnIdx = await waitForNotificationButton(notifId);
+    if (btnIdx === 0) {
+      const importResult = await uploadMail(cfg, rawMail, "crm.lead");
+      const normalized = normalizeResult(importResult, "crm.lead");
+      await showImportResult(cfg, rawMail, normalized, "Email imported as CRM Lead");
+    } else if (btnIdx === 1) {
+      const importResult = await uploadMail(cfg, rawMail);
+      const normalized = normalizeResult(importResult);
+      await showImportResult(cfg, rawMail, normalized, "Email imported");
     }
   } catch (err) {
-    notify("Odoo – Error", "Failed to find email: " + err.message);
+    notify("Odoo – Error", err.message);
   }
 }
 
-// handle menu click
 browser.menus.onClicked.addListener(async (info) => {
-  if (info.menuItemId === MENU_ID_FIND) {
-    await handleFindInOdoo(info);
-    return;
-  }
-  if (!info.menuItemId.startsWith(MENU_ID_PREFIX)) return;
-
-  // extract string after: prefix + "-"
-  let model = info.menuItemId.slice(MENU_ID_PREFIX.length + 1);
-  if (!model) {
-    model = false;
-  }
-
-  try {
-    const message = info.selectedMessages?.messages?.[0];
-    if (!message) {
-      throw new Error("Select exactly one email");
-    }
-
-    // Check host permission before attempting any fetch. Without it,
-    // fetch() fails with a cryptic NetworkError (CORS). This guides
-    // upgrading users who had <all_urls> in the old version but need
-    // to grant the optional permission in the new version.
-    const hasPermission = await browser.permissions.contains({
-      origins: ["*://*/*"],
-    });
-    if (!hasPermission) {
-      throw new Error(
-        "Host permission not granted. Open the add-on options and click 'Test connection' to grant access.",
-      );
-    }
-
-    // get raw email
-    const rawMail = await messenger.messages.getRaw(message.id);
-
-    // load Odoo config from options
-    const cfg = await get_config();
-
-    const import_result = await uploadMail(cfg, rawMail, model);
-
-    // uploadMail returns either:
-    //   - a dict from import_mail: {status, model, thread_id, message_id, is_unattached, url}
-    //   - a raw value from message_process: thread_id (int), false, null
-    if (typeof import_result === "object" && import_result !== null) {
-      // import_mail path (mail_manual_routing installed)
-      if (import_result.status === "duplicate") {
-        // Duplicate: look up where the existing message is stored
-        const msgId = extractMessageId(rawMail);
-        if (msgId) {
-          const found = await findMail(cfg, msgId);
-          if (found.status === "found") {
-            await showResult("Email already in Odoo (duplicate)", found, cfg);
-            return;
-          }
-        }
-      }
-      await showResult("Email successfully transferred", import_result, cfg);
-    } else {
-      // message_process fallback (unmodified Odoo)
-      if (import_result) {
-        if (model) {
-          notify("Odoo", "Email successfully transferred to Odoo as " + model + " " + import_result);
-        } else {
-          notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
-        }
-      } else if (import_result === false) {
-        // Duplicate: try to look up where it is stored
-        const msgId = extractMessageId(rawMail);
-        if (msgId) {
-          try {
-            const found = await findMail(cfg, msgId);
-            if (found.status === "found") {
-              await showResult("Email already in Odoo (duplicate)", found, cfg);
-              return;
-            }
-          } catch (_) {}
-        }
-        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
-      } else {
-        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
-      }
-    }
-  } catch (err) {
-    notify("Odoo – Error", "Failed to send email: " + err.message);
+  if (info.menuItemId === MENU_ID_IMPORTER) {
+    await handleOdooImporter(info);
   }
 });
 
-// handle runtime messages from options.js
 browser.runtime.onMessage.addListener(async (msg) => {
   try {
     if (msg.action === "testConnection") {
