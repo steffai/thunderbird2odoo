@@ -3,14 +3,16 @@
  * Odoo >= 19
  ********************************************************************/
 
-import { testOdooConnection, getConnectionInfo } from "./lib/odooClient.js";
-import { uploadMail } from "./lib/odooMailUpload.js";
+import { testOdooConnection, getConnectionInfo, findMail } from "./lib/odooClient.js";
+import { uploadMail, decodeRawMail } from "./lib/odooMailUpload.js";
 
 const MENU_ID_PREFIX = "send-to-odoo";
+const MENU_ID_FIND = "send-to-odoo-find";
 
 // Menu ids created by setup(), used by onShown to toggle visibility
 // based on how many messages are currently selected.
 const menuIds = new Set();
+menuIds.add(MENU_ID_FIND);
 
 function notify(title, message) {
   console.debug(title + ": " + message);
@@ -87,6 +89,20 @@ async function setup() {
     });
     menuIds.add(id);
   }
+
+  // "Find in Odoo" menu item — always available when configured
+  browser.menus.create({
+    id: MENU_ID_FIND,
+    title: "Find Email in Odoo",
+    contexts: ["message_list"],
+    icons: {
+      16: "icons/odoo-16.png",
+      32: "icons/odoo-32.png",
+      48: "icons/odoo-48.png",
+      96: "icons/odoo-96.png",
+      128: "icons/odoo-128.png",
+    },
+  });
 }
 
 // Only show the import menu items when exactly one email is selected.
@@ -100,8 +116,67 @@ browser.menus.onShown.addListener((info) => {
   browser.menus.refresh();
 });
 
+// Extract the Message-Id header from a raw RFC822 email
+function extractMessageId(rawMail) {
+  const decoded = decodeRawMail(rawMail);
+  const match = decoded.match(/^Message-ID:\s*<[^>]+>/im);
+  return match ? match[0].replace(/^Message-ID:\s*/i, "") : null;
+}
+
+// Handle "Find in Odoo" menu click
+async function handleFindInOdoo(info) {
+  try {
+    const message = info.selectedMessages?.messages?.[0];
+    if (!message) {
+      throw new Error("Select exactly one email");
+    }
+
+    const hasPermission = await browser.permissions.contains({
+      origins: ["*://*/*"],
+    });
+    if (!hasPermission) {
+      throw new Error(
+        "Host permission not granted. Open the add-on options and click 'Test connection' to grant access.",
+      );
+    }
+
+    const rawMail = await messenger.messages.getRaw(message.id);
+    const messageId = extractMessageId(rawMail);
+    if (!messageId) {
+      throw new Error("Could not extract Message-Id from email");
+    }
+    console.debug("findInOdoo: looking up Message-Id " + messageId);
+
+    const cfg = await get_config();
+    const result = await findMail(cfg, messageId);
+    console.debug("findInOdoo: result=" + JSON.stringify(result));
+
+    if (!result.found) {
+      notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
+    } else if (result.url) {
+      // Open the Odoo record URL in the system browser
+      await browser.windows.openDefaultBrowser(result.url);
+      if (result.is_unattached) {
+        notify("Odoo", "Email found in Lost Messages — opening in browser");
+      } else if (result.model) {
+        notify("Odoo", "Email found in Odoo as " + result.model + " " + result.thread_id + " — opening in browser");
+      } else {
+        notify("Odoo", "Email found in Odoo — opening in browser");
+      }
+    } else {
+      notify("Odoo", "Email found in Odoo (message " + result.message_id + ") but no URL available");
+    }
+  } catch (err) {
+    notify("Odoo – Error", "Failed to find email: " + err.message);
+  }
+}
+
 // handle menu click
 browser.menus.onClicked.addListener(async (info) => {
+  if (info.menuItemId === MENU_ID_FIND) {
+    await handleFindInOdoo(info);
+    return;
+  }
   if (!info.menuItemId.startsWith(MENU_ID_PREFIX)) return;
 
   // extract string after: prefix + "-"
