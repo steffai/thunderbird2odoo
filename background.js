@@ -150,7 +150,11 @@ browser.menus.onClicked.addListener(async (info) => {
           notify("Odoo", "Email successfully transferred to Odoo (thread " + r.thread_id + ")");
         }
       } else if (r.status === "lost") {
-        notify("Odoo", "Email imported to Lost Messages (message " + r.message_id + ")");
+        if (r.message_id) {
+          notify("Odoo", "Email imported to Lost Messages (message " + r.message_id + ")");
+        } else {
+          notify("Odoo", "Email imported to Lost Messages (thread " + r.thread_id + ")");
+        }
       } else if (r.status === "duplicate") {
         notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
       } else {
