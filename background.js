@@ -222,7 +222,7 @@ async function handleFindInOdoo(info) {
     const result = await findMail(cfg, messageId);
     console.debug("findInOdoo: result=" + JSON.stringify(result));
 
-    if (!result.found) {
+    if (result.status === "not_found") {
       notify("Odoo", "Email not found in Odoo (Message-Id: " + messageId + ")");
     } else {
       await showResult("Email found", result, true);
