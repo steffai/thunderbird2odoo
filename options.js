@@ -5,7 +5,6 @@ const testBtn = document.getElementById("test");
 const saveBtn = document.getElementById("save");
 const status = document.getElementById("status");
 
-const DEFAULT_MODELS = ["false", "crm.lead"];
 let lastValidHash = null;
 
 function getConfig() {
@@ -13,9 +12,6 @@ function getConfig() {
     url: urlInput.value.trim(),
     apikey: apiKeyInput.value.trim(),
     db: dbInput.value.trim() || null,
-    models: Array.from(
-      document.querySelectorAll("input[type=checkbox]:checked"),
-    ).map((cb) => cb.value),
   };
 }
 
@@ -24,6 +20,7 @@ function hash(cfg) {
 }
 
 function escapeHtml(str) {
+  if (str == null) return "";
   return str.replace(/[&<>"']/g, (c) => {
     const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
     return map[c];
@@ -37,22 +34,10 @@ function invalidate() {
 }
 
 (async () => {
-  const stored = await browser.storage.local.get([
-    "url",
-    "db",
-    "apikey",
-    "models",
-  ]);
+  const stored = await browser.storage.local.get(["url", "db", "apikey"]);
   if (stored.url) urlInput.value = stored.url;
   if (stored.db) dbInput.value = stored.db;
   if (stored.apikey) apiKeyInput.value = stored.apikey;
-  let models = DEFAULT_MODELS;
-  if (stored.models) models = stored.models;
-
-  document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-    cb.checked = models.includes(cb.value);
-  });
-
   invalidate();
 })();
 
@@ -68,21 +53,6 @@ testBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (cfg.models.length === 0) {
-    status.textContent = "At least one Odoo model must be selected";
-    return;
-  }
-
-// Request host permission so fetch() can bypass CORS. This must be the
-  // first await in the click handler: permissions.request() may only be
-  // called from a user input handler, and any prior await breaks that
-  // context. If the permission is already granted, request() returns true
-  // without prompting.
-  // We request the broad *://*/* pattern because origin-specific patterns
-  // with ports (e.g. http://localhost:8019/*) don't properly grant CORS
-  // bypass in Thunderbird. Unlike <all_urls> in permissions (granted at
-  // install time without consent), this is optional_permissions and the
-  // user is explicitly prompted.
   const granted = await browser.permissions.request({
     origins: ["*://*/*"],
   });
@@ -105,7 +75,6 @@ testBtn.addEventListener("click", async () => {
     lastValidHash = hash(cfg);
     saveBtn.disabled = false;
 
-    // build a detailed status message from connection info
     const info = result.info;
     let html = "Connection successful";
     if (info?.userInfo) {

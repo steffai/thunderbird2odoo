@@ -18,13 +18,15 @@ PNG_ICONS := $(foreach s,$(SIZES),$(ICON_DIR)/odoo-$(s).png)
 XPI_FILES := \
   manifest.json \
   background.js \
+  dialog.html \
+  dialog.js \
   options.html \
   options.js \
   lib \
   $(ICON_DIR)
 
 # JS source files to syntax-check
-JS_FILES := background.js options.js lib/odooClient.js lib/odooMailUpload.js
+JS_FILES := background.js dialog.js options.js lib/odooClient.js lib/odooMailUpload.js
 
 .PHONY: all check check-js test generate-icons xpi clean clean-icons distclean
 

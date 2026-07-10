@@ -19,9 +19,6 @@
         padding: 0.3rem;
         box-sizing: border-box;
       }
-      fieldset {
-        margin: 1rem 0;
-      }
       button {
         padding: 0.4rem 1rem;
         margin-right: 0.5rem;
@@ -36,10 +33,6 @@
         background: #e8e8e8;
         padding: 0.1em 0.3em;
         border-radius: 3px;
-      }
-      .footnote {
-        font-size: 0.85em;
-        color: #666;
       }
     </style>
   </head>
@@ -61,32 +54,6 @@
         Database (optional):<br />
         <input id="db" type="text" /> </label
       ><br /><br />
-
-      <fieldset>
-        <legend>Import Emails to following Odoo models</legend>
-
-        <label>
-          <input
-            type="checkbox"
-            value="false"
-            title="May require 'Lost Messages Routing' or similar Odoo extensions."
-          />
-          Generic* </label
-        ><br />
-
-        <label>
-          <input type="checkbox" value="crm.lead" />
-          CRM Lead </label
-        ><br />
-      </fieldset>
-
-      <p class="footnote">
-        * <em>Generic</em> imports may require the
-        <a href=https://apps.odoo.com/apps/modules/19.0/mail_manual_routing>
-        Lost Messages Routing</a> Odoo extension,
-        otherwise imported emails might not be visible.
-        <em>CRM Lead</em> imports will work in standard Odoo installations.
-      </p>
 
       <button id="test" type="button">Test connection</button>
       <button id="save" type="submit" disabled>Save</button>

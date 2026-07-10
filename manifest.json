@@ -10,7 +10,8 @@
     "menus",
     "messagesRead",
     "notifications",
-    "storage"
+    "storage",
+    "clipboardWrite"
   ],
   "optional_permissions": [
     "*://*/*"
