@@ -139,10 +139,15 @@ browser.menus.onClicked.addListener(async (info) => {
 
     // message_process returns:
     //   - thread_id (int): success, new or updated record
-    //   - false: Message-Id already exists in Odoo (duplicate;
-    //     the email may be in lost messages on first import)
-    //   - null: email was ignored (loop detection, bounce, no route)
-    //   - throws: error (no route found, routing error, etc.)
+    //   - false: one of two cases:
+    //     1. duplicate: Message-Id already exists (return False at top)
+    //     2. no routes: mail_manual_routing caught the unroutable
+    //        message, created a lost message, and returned [] routes;
+    //        _message_route_process then returns False (its initial
+    //        thread_id value, loop body never ran)
+    //     In both cases the email IS in Odoo.
+    //   - null: email was ignored (loop detection, bounce)
+    //   - throws: error (routing error, etc.)
     if (import_result) {
       if (model) {
         notify(
@@ -156,28 +161,25 @@ browser.menus.onClicked.addListener(async (info) => {
         notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
       }
     } else if (import_result === false) {
-      notify(
-        "Odoo",
-        "Email not imported: Message-Id already exists in Odoo (duplicate)",
-      );
-    } else {
-      // null: no route found, loop detection, or bounce
+      // duplicate or lost message: email is in Odoo either way
       if (model) {
         notify(
           "Odoo",
-          "Failed to import Email as " +
-            model +
-            ". Maybe it is already present?",
+          "Email is already present in Odoo (duplicate " + model + ")",
         );
       } else {
         notify(
           "Odoo",
-          "Email imported but no matching record found in Odoo. " +
-            "It may be in the 'Lost Messages' section. " +
-            "Consider installing the 'mail_manual_routing' extension " +
-            "or importing as 'CRM Lead' instead.",
+          "Email transferred to Odoo. " +
+            "It may be a duplicate or in the 'Lost Messages' section.",
         );
       }
+    } else {
+      // null: loop detection or bounce — email was ignored
+      notify(
+        "Odoo",
+        "Email not imported: ignored by Odoo (loop detection or bounce)",
+      );
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to send email: " + err.message);
