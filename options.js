@@ -23,6 +23,13 @@ function hash(cfg) {
   return JSON.stringify(cfg);
 }
 
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, (c) => {
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return map[c];
+  });
+}
+
 function invalidate() {
   lastValidHash = null;
   saveBtn.disabled = true;
@@ -96,8 +103,19 @@ testBtn.addEventListener("click", async () => {
 
   if (result?.ok) {
     lastValidHash = hash(cfg);
-    status.textContent = "Connection successful";
     saveBtn.disabled = false;
+
+    // build a detailed status message from connection info
+    const info = result.info;
+    let html = "Connection successful";
+    if (info?.userInfo) {
+      const u = info.userInfo;
+      html += " as <code>" + escapeHtml(u.login) + "</code>";
+      if (u.name) {
+        html += " (" + escapeHtml(u.name) + ")";
+      }
+    }
+    status.innerHTML = html;
   } else {
     status.textContent = "Failed: " + (result?.error || "unknown error");
   }

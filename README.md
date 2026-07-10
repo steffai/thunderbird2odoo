@@ -9,8 +9,7 @@ This Thunderbird Plugin allows to export email from Thunderbird an into the ERP 
 * odoo >= 19 (as the [External JSON-2 API](https://www.odoo.com/documentation/19.0/developer/reference/external_api.html) have been introduced in Odoo 19)
 * Optional:
   * [mail_manual_routing](https://apps.odoo.com/apps/modules/19.0/mail_manual_routing) to handle new and unrelated emails, that are otherwise not visible/lost in Odoo. For details, see [faotools mail_manual_routing](https://faotools.com/apps/19.0/lost-messages-routing-19-0-mail-manual-routing-1037)
-    * Without this extension, emails imported as *Generic* may not be visible for you. However, you can still import them as *Lead*. Make sure to active Leads in Odoo by:
-      * *Settings -> General Settings -> CRM -> Leads*
+    * Without this extension, emails imported as *Generic* may not be visible for you. However, you can still import them as *Opportunity* or *Lead*.
 
 ## Setup
 

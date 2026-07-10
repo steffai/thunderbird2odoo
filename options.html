@@ -29,6 +29,13 @@
       #status {
         margin-top: 1rem;
         min-height: 1.2em;
+        white-space: pre-line;
+      }
+      #status code {
+        font-family: monospace;
+        background: #e8e8e8;
+        padding: 0.1em 0.3em;
+        border-radius: 3px;
       }
       .footnote {
         font-size: 0.85em;
@@ -74,11 +81,11 @@
       </fieldset>
 
       <p class="footnote">
-        * “Generic” imports may require the
-        <em>Lost Messages Routing</em> (mail_manual_routing) Odoo extension,
-        otherwise imported emails might not be visible. “CRM Lead” imports are
-        always visible (activate leads in Odoo:
-        <em>Settings → General Settings → CRM → Leads</em>).
+        * <em>Generic</em> imports may require the
+        <a href=https://apps.odoo.com/apps/modules/19.0/mail_manual_routing>
+        Lost Messages Routing</a> Odoo extension,
+        otherwise imported emails might not be visible.
+        <em>CRM Lead</em> imports will work in standard Odoo installations.
       </p>
 
       <button id="test" type="button">Test connection</button>

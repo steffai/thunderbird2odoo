@@ -3,7 +3,7 @@
  * Odoo >= 19
  ********************************************************************/
 
-import { testOdooConnection } from "./lib/odooClient.js";
+import { testOdooConnection, getConnectionInfo } from "./lib/odooClient.js";
 import { uploadMail } from "./lib/odooMailUpload.js";
 
 const MENU_ID_PREFIX = "send-to-odoo";
@@ -162,8 +162,8 @@ browser.menus.onClicked.addListener(async (info) => {
 browser.runtime.onMessage.addListener(async (msg) => {
   try {
     if (msg.action === "testConnection") {
-      await testOdooConnection(msg.config);
-      return { ok: true };
+      const info = await getConnectionInfo(msg.config);
+      return { ok: true, info };
     }
 
     if (msg.action === "setup") {
