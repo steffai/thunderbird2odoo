@@ -139,8 +139,10 @@ browser.menus.onClicked.addListener(async (info) => {
 
     // message_process returns:
     //   - thread_id (int): success, new or updated record
-    //   - false: duplicate, Message-Id already exists
+    //   - false: Message-Id already exists in Odoo (duplicate;
+    //     the email may be in lost messages on first import)
     //   - null: email was ignored (loop detection, bounce, no route)
+    //   - throws: error (no route found, routing error, etc.)
     if (import_result) {
       if (model) {
         notify(
@@ -156,7 +158,7 @@ browser.menus.onClicked.addListener(async (info) => {
     } else if (import_result === false) {
       notify(
         "Odoo",
-        "Email not imported: duplicate (Message-Id already exists in Odoo)",
+        "Email not imported: Message-Id already exists in Odoo (duplicate)",
       );
     } else {
       // null: no route found, loop detection, or bounce
@@ -170,7 +172,8 @@ browser.menus.onClicked.addListener(async (info) => {
       } else {
         notify(
           "Odoo",
-          "Email not imported: no matching route found in Odoo. " +
+          "Email imported but no matching record found in Odoo. " +
+            "It may be in the 'Lost Messages' section. " +
             "Consider installing the 'mail_manual_routing' extension " +
             "or importing as 'CRM Lead' instead.",
         );
