@@ -77,6 +77,20 @@ async function setup() {
     );
   }
 
+  // "Find in Odoo" menu item — created first so it appears at the top
+  browser.menus.create({
+    id: MENU_ID_FIND,
+    title: "Find Email in Odoo",
+    contexts: ["message_list"],
+    icons: {
+      16: "icons/odoo-16.png",
+      32: "icons/odoo-32.png",
+      48: "icons/odoo-48.png",
+      96: "icons/odoo-96.png",
+      128: "icons/odoo-128.png",
+    },
+  });
+
   for (const item of cfg.models) {
     let model = false;
     let id = MENU_ID_PREFIX;
@@ -101,20 +115,6 @@ async function setup() {
     });
     menuIds.add(id);
   }
-
-  // "Find in Odoo" menu item — always available when configured
-  browser.menus.create({
-    id: MENU_ID_FIND,
-    title: "Find Email in Odoo",
-    contexts: ["message_list"],
-    icons: {
-      16: "icons/odoo-16.png",
-      32: "icons/odoo-32.png",
-      48: "icons/odoo-48.png",
-      96: "icons/odoo-96.png",
-      128: "icons/odoo-128.png",
-    },
-  });
 }
 
 // Only show the import menu items when exactly one email is selected.
