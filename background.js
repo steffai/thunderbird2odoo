@@ -192,8 +192,8 @@ async function showDialog(title, message, buttons = []) {
   const win = await browser.windows.create({
     url: url,
     type: "popup",
-    width: 480,
-    height: 160,
+    width: 600,
+    height: 360,
   });
   return new Promise((resolve) => {
     const cleanup = () => {
