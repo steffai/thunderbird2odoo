@@ -138,16 +138,10 @@ browser.menus.onClicked.addListener(async (info) => {
     const import_result = await uploadMail(cfg, rawMail, model);
 
     // message_process returns:
-    //   - thread_id (int): success, new or updated record
-    //   - false: one of two cases:
-    //     1. duplicate: Message-Id already exists (return False at top)
-    //     2. no routes: mail_manual_routing caught the unroutable
-    //        message, created a lost message, and returned [] routes;
-    //        _message_route_process then returns False (its initial
-    //        thread_id value, loop body never ran)
-    //     In both cases the email IS in Odoo.
+    //   - thread_id (int): success, new or updated record, or lost
+    //     message id (when mail_manual_routing created a lost message)
+    //   - false: Message-Id already exists (duplicate)
     //   - null: email was ignored (loop detection, bounce)
-    //   - throws: error (routing error, etc.)
     if (import_result) {
       if (model) {
         notify(
@@ -158,22 +152,13 @@ browser.menus.onClicked.addListener(async (info) => {
             import_result,
         );
       } else {
-        notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
+        notify("Odoo", "Email successfully transferred to Odoo (message " + import_result + ")");
       }
     } else if (import_result === false) {
-      // duplicate or lost message: email is in Odoo either way
-      if (model) {
-        notify(
-          "Odoo",
-          "Email is already present in Odoo (duplicate " + model + ")",
-        );
-      } else {
-        notify(
-          "Odoo",
-          "Email transferred to Odoo. " +
-            "It may be a duplicate or in the 'Lost Messages' section.",
-        );
-      }
+      notify(
+        "Odoo",
+        "Email not imported: Message-Id already exists in Odoo (duplicate)",
+      );
     } else {
       // null: loop detection or bounce — email was ignored
       notify(
