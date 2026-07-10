@@ -137,34 +137,38 @@ browser.menus.onClicked.addListener(async (info) => {
 
     const import_result = await uploadMail(cfg, rawMail, model);
 
-    // message_process returns:
-    //   - thread_id (int): success, new or updated record, or lost
-    //     message id (when mail_manual_routing created a lost message)
-    //   - false: Message-Id already exists (duplicate)
-    //   - null: email was ignored (loop detection, bounce)
-    if (import_result) {
-      if (model) {
-        notify(
-          "Odoo",
-          "Email successfully transferred to Odoo as " +
-            model +
-            " " +
-            import_result,
-        );
+    // uploadMail returns either:
+    //   - a dict from import_mail: {status, model, thread_id, message_id}
+    //   - a raw value from message_process: thread_id (int), false, null
+    if (typeof import_result === "object" && import_result !== null) {
+      // import_mail path (mail_manual_routing installed)
+      const r = import_result;
+      if (r.status === "ok") {
+        if (r.model) {
+          notify("Odoo", "Email successfully transferred to Odoo as " + r.model + " " + r.thread_id);
+        } else {
+          notify("Odoo", "Email successfully transferred to Odoo (thread " + r.thread_id + ")");
+        }
+      } else if (r.status === "lost") {
+        notify("Odoo", "Email imported to Lost Messages (message " + r.message_id + ")");
+      } else if (r.status === "duplicate") {
+        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
       } else {
-        notify("Odoo", "Email successfully transferred to Odoo (message " + import_result + ")");
+        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
       }
-    } else if (import_result === false) {
-      notify(
-        "Odoo",
-        "Email not imported: Message-Id already exists in Odoo (duplicate)",
-      );
     } else {
-      // null: loop detection or bounce — email was ignored
-      notify(
-        "Odoo",
-        "Email not imported: ignored by Odoo (loop detection or bounce)",
-      );
+      // message_process fallback (unmodified Odoo)
+      if (import_result) {
+        if (model) {
+          notify("Odoo", "Email successfully transferred to Odoo as " + model + " " + import_result);
+        } else {
+          notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
+        }
+      } else if (import_result === false) {
+        notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
+      } else {
+        notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
+      }
     }
   } catch (err) {
     notify("Odoo – Error", "Failed to send email: " + err.message);
