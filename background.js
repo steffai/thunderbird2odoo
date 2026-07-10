@@ -283,6 +283,17 @@ browser.menus.onClicked.addListener(async (info) => {
     //   - a raw value from message_process: thread_id (int), false, null
     if (typeof import_result === "object" && import_result !== null) {
       // import_mail path (mail_manual_routing installed)
+      if (import_result.status === "duplicate") {
+        // Duplicate: look up where the existing message is stored
+        const msgId = extractMessageId(rawMail);
+        if (msgId) {
+          const found = await findMail(cfg, msgId);
+          if (found.status === "found") {
+            await showResult("Email already in Odoo (duplicate)", found);
+            return;
+          }
+        }
+      }
       await showResult("Email successfully transferred", import_result);
     } else {
       // message_process fallback (unmodified Odoo)
@@ -293,6 +304,17 @@ browser.menus.onClicked.addListener(async (info) => {
           notify("Odoo", "Email successfully transferred to Odoo (thread " + import_result + ")");
         }
       } else if (import_result === false) {
+        // Duplicate: try to look up where it is stored
+        const msgId = extractMessageId(rawMail);
+        if (msgId) {
+          try {
+            const found = await findMail(cfg, msgId);
+            if (found.status === "found") {
+              await showResult("Email already in Odoo (duplicate)", found);
+              return;
+            }
+          } catch (_) {}
+        }
         notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
       } else {
         notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
