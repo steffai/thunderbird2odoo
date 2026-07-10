@@ -39,11 +39,28 @@ async function setup() {
   browser.menus.removeAll();
   menuIds.clear();
   const cfg = await get_config();
-  try {
-    await testOdooConnection(cfg);
-  } catch (err) {
-    console.error("setup error:", err);
+
+  if (!cfg.url || !cfg.apikey) {
+    // not configured yet, empty menus, nothing to do
     return;
+  }
+
+  const hasPermission = await browser.permissions.contains({
+    origins: ["*://*/*"],
+  });
+  if (hasPermission) {
+    try {
+      await testOdooConnection(cfg);
+    } catch (err) {
+      console.warn(
+        "setup: connection test failed, menus still created:",
+        err,
+      );
+    }
+  } else {
+    console.debug(
+      "setup: host permission not granted yet, skipping connection test",
+    );
   }
 
   for (const item of cfg.models) {
@@ -97,6 +114,19 @@ browser.menus.onClicked.addListener(async (info) => {
     const message = info.selectedMessages?.messages?.[0];
     if (!message) {
       throw new Error("Select exactly one email");
+    }
+
+    // Check host permission before attempting any fetch. Without it,
+    // fetch() fails with a cryptic NetworkError (CORS). This guides
+    // upgrading users who had <all_urls> in the old version but need
+    // to grant the optional permission in the new version.
+    const hasPermission = await browser.permissions.contains({
+      origins: ["*://*/*"],
+    });
+    if (!hasPermission) {
+      throw new Error(
+        "Host permission not granted. Open the add-on options and click 'Test connection' to grant access.",
+      );
     }
 
     // get raw email

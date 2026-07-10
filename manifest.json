@@ -10,8 +10,10 @@
     "menus",
     "messagesRead",
     "notifications",
-    "storage",
-    "<all_urls>"
+    "storage"
+  ],
+  "optional_permissions": [
+    "*://*/*"
   ],
   "background": {
     "scripts": ["background.js"],
