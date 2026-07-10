@@ -63,7 +63,12 @@ function buildNotification(prefix, r) {
       message = prefix + " to Lost Messages";
       break;
     case "duplicate":
-      message = "Email not imported: Message-Id already exists in Odoo (duplicate)";
+      if (r.is_unattached) {
+        title = "Odoo – Lost Messages";
+      } else if (r.model) {
+        title = "Odoo – " + r.model + " " + (r.thread_id || "");
+      }
+      message = "Email not imported: already in Odoo (duplicate)";
       break;
     case "ignored":
       message = "Email not imported: ignored by Odoo (loop detection or bounce)";
