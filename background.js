@@ -13,10 +13,11 @@ const MENU_ID_PREFIX = "send-to-odoo";
 const menuIds = new Set();
 
 function notify(title, message) {
-  console.log(title + ": " + message);
-  browser.notifications.create("thunderbird2odooNotifyId", {
+  console.debug(title + ": " + message);
+  // Use a unique id per notification so a later one does not replace an
+  // earlier one (e.g. a failure right after a success).
+  browser.notifications.create("thunderbird2odoo-" + Date.now(), {
     type: "basic",
-    //"thunderbird2odoo.svg",
     iconUrl: browser.runtime.getURL("icons/odoo-48.png"),
     title: title,
     message: message,
@@ -41,7 +42,7 @@ async function setup() {
   try {
     await testOdooConnection(cfg);
   } catch (err) {
-    console.log("setup error: " + err);
+    console.error("setup error:", err);
     return;
   }
 
