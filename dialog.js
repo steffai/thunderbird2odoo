@@ -1,5 +1,14 @@
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function linkify(text) {
-  return text.replace(
+  return escapeHtml(text).replace(
     /(https?:\/\/[^\s]+)/g,
     '<a href="$1">$1</a>',
   );

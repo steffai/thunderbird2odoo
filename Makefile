@@ -69,7 +69,7 @@ check-js:
 	@command -v node >/dev/null || \
 	  (echo "ERROR: node not installed (needed for JS syntax check)" && exit 1)
 	@for f in $(JS_FILES); do \
-	  node --input-type=module --check < $$f || \
+	  node --check $$f || \
 	    (echo "ERROR: syntax error in $$f" && exit 1); \
 	  echo "ok: $$f"; \
 	done
