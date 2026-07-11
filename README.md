@@ -21,7 +21,6 @@ This Thunderbird Plugin allows to export email from Thunderbird an into the ERP 
     * Set **Odoo URL** to your Odoo server.
     * Set the generated API Key into the **API Key** field.
     * Set the **Odoo database**, if it is required (normally it is not required)
-    * Select the **Odoo Models** you want to import emails into. For testing, best start with *Opportunity (CRM Lead)*.
     * Thunderbird addon *Odoo Email Importer* options window:
       ![Odoo Email Importer: options window](images/OdooEmailImporter-configure.png "Odoo Email Importer: options window")
   * Test the settings by *Test connection*. You will be prompted to grant host permission to access your Odoo server. If successful, *Save* them afterwards.

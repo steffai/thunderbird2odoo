@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0
+## 0.5.0
 
 ### Fixes
 
@@ -8,6 +8,7 @@
 
 ### Changes
 
+- The plugin is now able for query Odoo about emails, show information and propose matching actions.
 - **Optional host permissions**: replaced the broad `<all_urls>` install-time permission with `optional_permissions` (`*://*/*`); the user is now explicitly prompted for consent when clicking *Test connection* in the options page (per AMO review)
 
 ### Features
