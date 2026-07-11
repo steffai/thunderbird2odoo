@@ -219,23 +219,46 @@ async function showDialog(title, message, buttons = []) {
 
 async function importAndShowResult(cfg, rawMail, model, prefix) {
   const rawResult = await uploadMail(cfg, rawMail, model);
-  const messageId = extractMessageId(rawMail);
-  let found = null;
-  if (messageId) {
-    try {
-      found = await findMail(cfg, messageId);
-    } catch (_) {}
-  }
+  console.debug("importAndShowResult: rawResult=" + JSON.stringify(rawResult));
 
-  if (found?.status === "found") {
-    if (rawResult === false && !found.is_unattached) {
-      await showResult("Email already in Odoo (duplicate)", found, cfg, true);
-    } else {
-      await showResult(prefix, found, cfg, true);
+  if (rawResult) {
+    // message_process returned a thread_id — email was routed successfully.
+    // Try to find it via findMail to show the URL.
+    const messageId = extractMessageId(rawMail);
+    if (messageId) {
+      try {
+        const found = await findMail(cfg, messageId);
+        if (found.status === "found") {
+          await showResult(prefix, found, cfg, true);
+          return;
+        }
+      } catch (err) {
+        console.debug("importAndShowResult: findMail failed: " + err.message);
+      }
     }
+    // Fallback notification without URL
+    notify("Odoo", prefix + " (" + (model ? model + " " : "thread ") + rawResult + ")");
   } else if (rawResult === false) {
+    // message_process returned false: could be a new lost message or a duplicate.
+    const messageId = extractMessageId(rawMail);
+    if (messageId) {
+      try {
+        const found = await findMail(cfg, messageId);
+        if (found.status === "found") {
+          if (found.is_unattached) {
+            await showResult(prefix, found, cfg, true);
+          } else {
+            await showResult("Email already in Odoo (duplicate)", found, cfg, true);
+          }
+          return;
+        }
+      } catch (err) {
+        console.debug("importAndShowResult: findMail failed: " + err.message);
+      }
+    }
     notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
   } else {
+    // null: ignored / bounce
     notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
   }
 }
