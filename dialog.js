@@ -1,24 +1,23 @@
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function linkify(text) {
-  return escapeHtml(text).replace(
-    /(https?:\/\/[^\s]+)/g,
-    '<a href="$1">$1</a>',
-  );
+function renderMessage(text) {
+  const el = document.getElementById("message");
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  for (const part of parts) {
+    if (part.match(/^https?:\/\//)) {
+      const a = document.createElement("a");
+      a.href = part;
+      a.textContent = part;
+      a.rel = "noreferrer";
+      el.appendChild(a);
+    } else {
+      el.appendChild(document.createTextNode(part));
+    }
+  }
 }
 
 (async () => {
   const params = new URLSearchParams(location.search);
   document.title = params.get("title") || "Odoo Email Importer";
-  document.getElementById("message").innerHTML =
-    linkify(params.get("message") || "");
+  renderMessage(params.get("message") || "");
 
   const win = await browser.windows.getCurrent();
   let buttons;
