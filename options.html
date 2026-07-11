@@ -14,14 +14,26 @@
         display: inline-block;
       }
       input[type="text"],
-      input[type="password"] {
+      input[type="password"],
+      input[type="number"] {
         width: 100%;
         padding: 0.3rem;
         box-sizing: border-box;
       }
+      input[type="number"] {
+        width: 6rem;
+      }
       button {
         padding: 0.4rem 1rem;
         margin-right: 0.5rem;
+      }
+      hr {
+        margin: 1.5rem 0;
+      }
+      .info {
+        font-size: 0.9em;
+        color: #555;
+        margin: 0.5rem 0;
       }
       #status {
         margin-top: 1rem;
@@ -57,7 +69,31 @@
 
       <button id="test" type="button">Test connection</button>
       <button id="save" type="submit" disabled>Save</button>
+      <button id="clearCache" type="button" style="margin-left:2rem">Clear Cache</button>
     </form>
+
+    <hr />
+
+    <h3>Odoo Sync</h3>
+
+    <form id="syncSettings">
+      <label>
+        Max age (days, 0 = unlimited):<br />
+        <input id="maxAgeDays" type="number" min="0" value="365" />
+      </label>
+      <br /><br />
+      <label>
+        Sync limit (max messages):<br />
+        <input id="syncLimit" type="number" min="1" value="10000" />
+      </label>
+      <br /><br />
+      <button id="saveSync" type="button">Save</button>
+    </form>
+
+    <br />
+    <button id="syncNow" type="button">Sync now</button>
+
+    <p class="info" id="cacheInfo"></p>
 
     <p id="status"></p>
 

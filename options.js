@@ -3,7 +3,14 @@ const dbInput = document.getElementById("db");
 const apiKeyInput = document.getElementById("apikey");
 const testBtn = document.getElementById("test");
 const saveBtn = document.getElementById("save");
+const clearCacheBtn = document.getElementById("clearCache");
 const status = document.getElementById("status");
+
+const maxAgeInput = document.getElementById("maxAgeDays");
+const syncLimitInput = document.getElementById("syncLimit");
+const saveSyncBtn = document.getElementById("saveSync");
+const syncNowBtn = document.getElementById("syncNow");
+const cacheInfo = document.getElementById("cacheInfo");
 
 let lastValidHash = null;
 
@@ -19,8 +26,6 @@ function hash(cfg) {
   return JSON.stringify(cfg);
 }
 
-
-
 function invalidate() {
   lastValidHash = null;
   saveBtn.disabled = true;
@@ -28,11 +33,14 @@ function invalidate() {
 }
 
 (async () => {
-  const stored = await browser.storage.local.get(["url", "db", "apikey"]);
+  const stored = await browser.storage.local.get(["url", "db", "apikey", "maxAgeDays", "syncLimit"]);
   if (stored.url) urlInput.value = stored.url;
   if (stored.db) dbInput.value = stored.db;
   if (stored.apikey) apiKeyInput.value = stored.apikey;
+  if (stored.maxAgeDays !== undefined) maxAgeInput.value = stored.maxAgeDays;
+  if (stored.syncLimit !== undefined) syncLimitInput.value = stored.syncLimit;
   invalidate();
+  refreshCacheInfo();
 })();
 
 [urlInput, dbInput, apiKeyInput].forEach((el) =>
@@ -86,6 +94,12 @@ testBtn.addEventListener("click", async () => {
   }
 });
 
+clearCacheBtn.addEventListener("click", async () => {
+  const result = await browser.runtime.sendMessage({ action: "clearCache" });
+  status.textContent = result?.ok ? "Odoo cache cleared" : "Failed to clear cache";
+  refreshCacheInfo();
+});
+
 document.getElementById("settings").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -107,3 +121,35 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
     status.textContent = "Saved, but setup failed: " + (result?.error || "unknown error");
   }
 });
+
+saveSyncBtn.addEventListener("click", async () => {
+  const maxAgeDays = parseInt(maxAgeInput.value, 10) || 365;
+  const syncLimit = parseInt(syncLimitInput.value, 10) || 10000;
+  await browser.storage.local.set({ maxAgeDays, syncLimit });
+  status.textContent = "Sync settings saved";
+  refreshCacheInfo();
+});
+
+syncNowBtn.addEventListener("click", async () => {
+  syncNowBtn.disabled = true;
+  status.textContent = "Syncing from Odoo…";
+  const result = await browser.runtime.sendMessage({ action: "syncFromOdoo" });
+  if (result?.ok) {
+    status.textContent = "Sync complete";
+  } else {
+    status.textContent = "Sync failed";
+  }
+  syncNowBtn.disabled = false;
+  refreshCacheInfo();
+});
+
+async function refreshCacheInfo() {
+  const info = await browser.runtime.sendMessage({ action: "getCacheInfo" });
+  if (!info) return;
+  let text = "Cached entries: " + info.size;
+  if (info.lastSync) {
+    const d = new Date(info.lastSync);
+    text += " | Last sync: " + d.toLocaleString();
+  }
+  cacheInfo.textContent = text;
+}

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2
+
+### Features
+
+- **Email status bar**: a colored status bar now appears in the message reader when viewing an email that has been checked against Odoo (via the right-click menu). Shows whether the email (or its predecessor) was found in Odoo, with buttons to open, verify, or add the email. Status is cached per email and persists across restarts.
+- **Clear Odoo Cache**: a "Clear Odoo Cache" button in the options page lets users invalidate all cached statuses (useful after switching Odoo servers).
+
+### Changes
+
+- **Internal**: refactored `handleOdooImporter` into reusable `importMessageById` and `verifyMessageById` functions
+
 ## 0.5.1
 
 ### Fixes
