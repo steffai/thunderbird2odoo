@@ -5,7 +5,6 @@ const testBtn = document.getElementById("test");
 const saveBtn = document.getElementById("save");
 const status = document.getElementById("status");
 
-const DEFAULT_MODELS = ["false", "crm.lead"];
 let lastValidHash = null;
 
 function getConfig() {
@@ -13,14 +12,19 @@ function getConfig() {
     url: urlInput.value.trim(),
     apikey: apiKeyInput.value.trim(),
     db: dbInput.value.trim() || null,
-    models: Array.from(
-      document.querySelectorAll("input[type=checkbox]:checked"),
-    ).map((cb) => cb.value),
   };
 }
 
 function hash(cfg) {
   return JSON.stringify(cfg);
+}
+
+function escapeHtml(str) {
+  if (str == null) return "";
+  return str.replace(/[&<>"']/g, (c) => {
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return map[c];
+  });
 }
 
 function invalidate() {
@@ -30,22 +34,10 @@ function invalidate() {
 }
 
 (async () => {
-  const stored = await browser.storage.local.get([
-    "url",
-    "db",
-    "apikey",
-    "models",
-  ]);
+  const stored = await browser.storage.local.get(["url", "db", "apikey"]);
   if (stored.url) urlInput.value = stored.url;
   if (stored.db) dbInput.value = stored.db;
   if (stored.apikey) apiKeyInput.value = stored.apikey;
-  let models = DEFAULT_MODELS;
-  if (stored.models) models = stored.models;
-
-  document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-    cb.checked = models.includes(cb.value);
-  });
-
   invalidate();
 })();
 
@@ -61,10 +53,15 @@ testBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (cfg.models.length === 0) {
-    status.textContent = "At least one Odoo model must be selected";
+  const granted = await browser.permissions.request({
+    origins: ["*://*/*"],
+  });
+  if (!granted) {
+    status.textContent =
+      "Host permission is required to connect to your Odoo server";
     return;
   }
+  console.debug("testConnection: host permission granted");
 
   status.textContent = "Testing connection…";
   saveBtn.disabled = true;
@@ -74,12 +71,22 @@ testBtn.addEventListener("click", async () => {
     config: cfg,
   });
 
-  if (result.ok) {
+  if (result?.ok) {
     lastValidHash = hash(cfg);
-    status.textContent = "Connection successful";
     saveBtn.disabled = false;
+
+    const info = result.info;
+    let html = "Connection successful";
+    if (info?.userInfo) {
+      const u = info.userInfo;
+      html += " as <code>" + escapeHtml(u.login) + "</code>";
+      if (u.name) {
+        html += " (" + escapeHtml(u.name) + ")";
+      }
+    }
+    status.innerHTML = html;
   } else {
-    status.textContent = "Failed: " + result.error;
+    status.textContent = "Failed: " + (result?.error || "unknown error");
   }
 });
 
@@ -98,5 +105,9 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
     action: "setup",
   });
 
-  status.textContent = "Settings saved";
+  if (result?.ok) {
+    status.textContent = "Settings saved";
+  } else {
+    status.textContent = "Saved, but setup failed: " + (result?.error || "unknown error");
+  }
 });

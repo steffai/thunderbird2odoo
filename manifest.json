@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Odoo Email Importer",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Transfer selected email to Odoo",
   "browser_specific_settings": {
     "gecko": { "id": "@thunderbird2odoo.bareos.joergsteffens" }
@@ -11,7 +11,10 @@
     "messagesRead",
     "notifications",
     "storage",
-    "<all_urls>"
+    "clipboardWrite"
+  ],
+  "optional_permissions": [
+    "*://*/*"
   ],
   "background": {
     "scripts": ["background.js"],

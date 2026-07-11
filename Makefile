@@ -18,12 +18,17 @@ PNG_ICONS := $(foreach s,$(SIZES),$(ICON_DIR)/odoo-$(s).png)
 XPI_FILES := \
   manifest.json \
   background.js \
+  dialog.html \
+  dialog.js \
   options.html \
   options.js \
   lib \
   $(ICON_DIR)
 
-.PHONY: all check generate-icons xpi clean distclean
+# JS source files to syntax-check
+JS_FILES := background.js dialog.js options.js lib/odooClient.js lib/odooMailUpload.js
+
+.PHONY: all check check-js test generate-icons xpi clean clean-icons distclean
 
 all: xpi
 # --------------------------------------------------
@@ -52,7 +57,7 @@ xpi: check generate-icons
 # Checks
 # --------------------------------------------------
 
-check:
+check: check-js test
 	@command -v zip >/dev/null || \
 	  (echo "ERROR: zip not installed" && exit 1)
 	@command -v jq >/dev/null || \
@@ -60,12 +65,31 @@ check:
 	@command -v $(RSVG) >/dev/null || \
 	  (echo "ERROR: rsvg-convert missing. Install librsvg2-bin" && exit 1)
 
+check-js:
+	@command -v node >/dev/null || \
+	  (echo "ERROR: node not installed (needed for JS syntax check)" && exit 1)
+	@for f in $(JS_FILES); do \
+	  node --check $$f || \
+	    (echo "ERROR: syntax error in $$f" && exit 1); \
+	  echo "ok: $$f"; \
+	done
+
+test:
+	@command -v node >/dev/null || \
+	  (echo "ERROR: node not installed (needed for tests)" && exit 1)
+	node --test
+
 # --------------------------------------------------
 # Cleanup
 # --------------------------------------------------
 
 clean:
+	rm -rf $(DIST_DIR)
+
+# Also remove the generated PNG icons. The icons are committed to keep
+# development setup simple, so this is a separate target: running 'make clean'
+# must not dirty the working tree.
+clean-icons:
 	rm -f $(PNG_ICONS)
 
 distclean: clean
-	rm -rf $(DIST_DIR)

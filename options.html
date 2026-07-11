@@ -3,6 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <title>Odoo Email Importer – Settings</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: inline-block;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 0.3rem;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 0.4rem 1rem;
+        margin-right: 0.5rem;
+      }
+      #status {
+        margin-top: 1rem;
+        min-height: 1.2em;
+        white-space: pre-line;
+      }
+      #status code {
+        font-family: monospace;
+        background: #e8e8e8;
+        padding: 0.1em 0.3em;
+        border-radius: 3px;
+      }
+    </style>
   </head>
   <body>
     <h2>Odoo Connection</h2>
@@ -22,24 +54,6 @@
         Database (optional):<br />
         <input id="db" type="text" /> </label
       ><br /><br />
-
-      <fieldset>
-        <legend>Import Emails to following Odoo models</legend>
-
-        <label>
-          <input
-            type="checkbox"
-            value="false"
-            title="May require 'Lost Messages Routing' or similar Odoo extensions."
-          />
-          Generic* </label
-        ><br />
-
-        <label>
-          <input type="checkbox" value="crm.lead" />
-          CRM Lead </label
-        ><br />
-      </fieldset>
 
       <button id="test" type="button">Test connection</button>
       <button id="save" type="submit" disabled>Save</button>

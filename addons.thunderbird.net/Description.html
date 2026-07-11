@@ -13,7 +13,7 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
       >
       helps handle new or unrelated emails that might otherwise not be visible
       in Odoo. Without this extension, emails imported as <em>Generic</em> may
-      not appear. Emails imported as <em>Lead</em> are always visible.
+      not appear. Imported emails as <em>Opportunity (CRM Lead)</em> will work in standard Odoo installations.
     </li>
   </ul>
 </ul>
@@ -23,10 +23,6 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
 <ul>
   <li>Odoo:</li>
   <ul>
-    <li>
-      To import emails as leads, make sure CRM Leads are enabled:
-      <em>Settings → General Settings → CRM → Leads</em>
-    </li>
     <li>
       Create an API key:
       <em>User → My Preferences → Security → API Keys → Add API Key</em>
@@ -41,10 +37,12 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
         <li>Odoo server URL</li>
         <li>API key</li>
         <li>Odoo database name (usually not required)</li>
-        <li>Odoo models used for importing emails</li>
       </ul>
     </li>
-    <li>Test the connection and save the settings</li>
+    <li>
+      Test the connection. You will be prompted to grant host permission
+      to access your Odoo server, then save the settings
+    </li>
   </ul>
 </ul>
 
@@ -52,5 +50,4 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
 
 After configuration, emails can be imported into Odoo using the context menu.
 Right-click an email and select
-<em>"Import Email into Odoo"</em>
-or one of the available sub-options.
+<em>"Odoo Email Importer"</em>.
