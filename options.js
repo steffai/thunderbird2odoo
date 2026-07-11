@@ -19,13 +19,7 @@ function hash(cfg) {
   return JSON.stringify(cfg);
 }
 
-function escapeHtml(str) {
-  if (str == null) return "";
-  return str.replace(/[&<>"']/g, (c) => {
-    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-    return map[c];
-  });
-}
+
 
 function invalidate() {
   lastValidHash = null;
@@ -76,15 +70,17 @@ testBtn.addEventListener("click", async () => {
     saveBtn.disabled = false;
 
     const info = result.info;
-    let html = "Connection successful";
+    status.textContent = "Connection successful";
     if (info?.userInfo) {
       const u = info.userInfo;
-      html += " as <code>" + escapeHtml(u.login) + "</code>";
+      const code = document.createElement("code");
+      code.textContent = u.login;
+      status.appendChild(document.createTextNode(" as "));
+      status.appendChild(code);
       if (u.name) {
-        html += " (" + escapeHtml(u.name) + ")";
+        status.appendChild(document.createTextNode(" (" + u.name + ")"));
       }
     }
-    status.innerHTML = html;
   } else {
     status.textContent = "Failed: " + (result?.error || "unknown error");
   }

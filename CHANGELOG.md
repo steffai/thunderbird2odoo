@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+### Fixes
+
+- **AMO review warnings**: replaced `innerHTML` assignments with safe DOM APIs (`createTextNode`/`createElement`) in `dialog.js` and `options.js`, resolving two "Unsafe assignment to innerHTML" warnings from the Thunderbird add-on validator
+
 ## 0.5.0
 
 ### Fixes
