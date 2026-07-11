@@ -217,33 +217,27 @@ async function showDialog(title, message, buttons = []) {
   });
 }
 
-function normalizeResult(result, model) {
-  if (typeof result === "object" && result !== null) {
-    return result;
+async function importAndShowResult(cfg, rawMail, model, prefix) {
+  const rawResult = await uploadMail(cfg, rawMail, model);
+  const messageId = extractMessageId(rawMail);
+  let found = null;
+  if (messageId) {
+    try {
+      found = await findMail(cfg, messageId);
+    } catch (_) {}
   }
-  if (result) {
-    return { status: "ok", model: model || false, thread_id: result, message_id: false, is_unattached: false };
-  }
-  if (result === false) {
-    return { status: "duplicate", model: model || false, thread_id: false, message_id: false, is_unattached: false };
-  }
-  return { status: "ignored", model: model || false, thread_id: false, message_id: false, is_unattached: false };
-}
 
-async function showImportResult(cfg, rawMail, normalized, prefix) {
-  if (normalized.status === "duplicate") {
-    const msgId = extractMessageId(rawMail);
-    if (msgId) {
-      try {
-        const found = await findMail(cfg, msgId);
-        if (found.status === "found") {
-          await showResult("Email already in Odoo (duplicate)", found, cfg, true);
-          return;
-        }
-      } catch (_) {}
+  if (found?.status === "found") {
+    if (rawResult === false && !found.is_unattached) {
+      await showResult("Email already in Odoo (duplicate)", found, cfg, true);
+    } else {
+      await showResult(prefix, found, cfg, true);
     }
+  } else if (rawResult === false) {
+    notify("Odoo", "Email not imported: Message-Id already exists in Odoo (duplicate)");
+  } else {
+    notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
   }
-  await showResult(prefix, normalized, cfg, true);
 }
 
 async function handleOdooImporter(info) {
@@ -295,9 +289,7 @@ async function handleOdooImporter(info) {
         [{ title: "Import", value: 0 }, { title: "Cancel", value: -1 }],
       );
       if (btnIdx === 0) {
-        const importResult = await uploadMail(cfg, rawMail);
-        const normalized = normalizeResult(importResult);
-        await showImportResult(cfg, rawMail, normalized, "Email imported");
+        await importAndShowResult(cfg, rawMail, false, "Email imported");
       }
       return;
     }
@@ -309,13 +301,9 @@ async function handleOdooImporter(info) {
       [{ title: "As CRM Lead", value: 0 }, { title: "As Lost Message", value: 1 }],
     );
     if (btnIdx === 0) {
-      const importResult = await uploadMail(cfg, rawMail, "crm.lead");
-      const normalized = normalizeResult(importResult, "crm.lead");
-      await showImportResult(cfg, rawMail, normalized, "Email imported as CRM Lead");
+      await importAndShowResult(cfg, rawMail, "crm.lead", "Email imported as CRM Lead");
     } else if (btnIdx === 1) {
-      const importResult = await uploadMail(cfg, rawMail);
-      const normalized = normalizeResult(importResult);
-      await showImportResult(cfg, rawMail, normalized, "Email imported");
+      await importAndShowResult(cfg, rawMail, false, "Email imported");
     }
   } catch (err) {
     notify("Odoo – Error", err.message);
