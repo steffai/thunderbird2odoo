@@ -2,10 +2,14 @@ var _lastAction = null;
 var _ignoreNextCacheChange = false;
 
 function renderBar(d, container) {
-  if (!d || !d.status) return null;
-
   var old = document.getElementById("odoo-status-bar");
   if (old) old.remove();
+
+  if (d && d.status) {
+    window._odooDebug = JSON.stringify(d);
+  } else {
+    console.debug("renderBar: no data", d); return null;
+  }
 
   var b = document.createElement("div");
   b.id = "odoo-status-bar";
@@ -33,28 +37,47 @@ function renderBar(d, container) {
     a.style.cssText = "color:#1a73e8;text-decoration:underline;cursor:pointer";
     return a;
   }
+  
+  function appendStatusElement(l, status) {
+    var e = document.createElement("span");
+    if (status === "found") {
+      e.textContent = " \u25CF";
+      e.style.color = "#1b8a1b";
+    } else if (status === "parent_found") {
+      e.textContent = " \u25CF";
+      e.style.color = "#d49a00";
+    } else if (status === "not_found") {
+      e.textContent = " \u2715";
+      e.style.color = "#c0392b";
+    } else {
+      return;
+    }
+    l.appendChild(e);
+  }
+  
+  function appendUrls(l, modelUrl, messageUrl) {
+    if (modelUrl) {
+      l.appendChild(makeLink(modelUrl));
+      l.appendChild(document.createTextNode(" "));
+    }
+    if (messageUrl && messageUrl !== modelUrl) {
+      l.appendChild(makeLink(messageUrl));
+      l.appendChild(document.createTextNode(" "));
+    }
+  }
 
   l.appendChild(document.createTextNode("Odoo: "));
 
   if (d.status === "found") {
-    if (d.url) l.appendChild(makeLink(d.url));
-    var dot = document.createElement("span");
-    dot.textContent = " \u25CF";
-    dot.style.color = "#1b8a1b";
-    l.appendChild(dot);
+    appendUrls(l, d.modelUrl, d.messageUrl);
+    appendStatusElement(l, d.status);
   } else if (d.status === "parent_found") {
     l.appendChild(document.createTextNode("not found, only parent "));
-    if (d.parentUrl) l.appendChild(makeLink(d.parentUrl));
-    var dot = document.createElement("span");
-    dot.textContent = " \u25CF";
-    dot.style.color = "#d49a00";
-    l.appendChild(dot);
+    appendUrls(l, d.parentModelUrl, d.parentMessageUrl);
+    appendStatusElement(l, d.status);
   } else if (d.status === "not_found") {
     l.appendChild(document.createTextNode("not found"));
-    var x = document.createElement("span");
-    x.textContent = " \u2715";
-    x.style.color = "#c0392b";
-    l.appendChild(x);
+    appendStatusElement(l, d.status);
   }
 
   if (_lastAction) {
@@ -78,8 +101,12 @@ function renderBar(d, container) {
 function doAction(action) {
   messenger.runtime.sendMessage({ action: action }).then(function (r) {
     if (r && r.status) {
-      _lastAction = action === "verifyMessage" ? "verified" : "added";
-      if (r.urlCopied) _lastAction += ", URL copied";
+      if (action === "addMessage" && !r.success) {
+        _lastAction = null;
+      } else {
+        _lastAction = action === "verifyMessage" ? "verified" : "added";
+        if (r.urlCopied) _lastAction += ", URL copied";
+      }
       _ignoreNextCacheChange = true;
       var container = document.getElementById("messagepane") || document.body;
       renderBar(r, container);
@@ -88,16 +115,23 @@ function doAction(action) {
     refreshBar();
   }, function () {
     refreshBar();
-  });
+  }).catch(function () {});
 }
 
 function refreshBar() {
   messenger.runtime.sendMessage({ action: "getOdooStatus" }).then(function (data) {
-    if (!data || !data.status) return;
     var container = document.getElementById("messagepane") || document.body;
     renderBar(data, container);
-  });
+  }, function (err) {
+    console.debug("refreshBar error:", err);
+  }).catch(function () {});
 }
+
+messenger.runtime.onMessage.addListener(function (msg) {
+  if (msg.action === "refreshOdooStatus") {
+    refreshBar();
+  }
+});
 
 messenger.storage.onChanged.addListener(function (changes, area) {
   if (area === "local" && changes.odooMailCache) {

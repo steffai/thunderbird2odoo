@@ -11,10 +11,12 @@ const maxAgeInput = document.getElementById("maxAgeDays");
 const syncLimitInput = document.getElementById("syncLimit");
 const saveSyncBtn = document.getElementById("saveSync");
 const syncNowBtn = document.getElementById("syncNow");
+const countBtn = document.getElementById("countBtn");
+const countResult = document.getElementById("countResult");
 const cacheInfo = document.getElementById("cacheInfo");
 
 const syncSettingsForm = document.getElementById("syncSettings");
-const syncFields = [maxAgeInput, syncLimitInput, saveSyncBtn, clearCacheBtn, syncNowBtn, syncSettingsForm];
+const syncFields = [maxAgeInput, syncLimitInput, saveSyncBtn, clearCacheBtn, syncNowBtn, countBtn, syncSettingsForm];
 function setSyncEnabled(enabled) {
   syncFields.forEach(el => { if (el) el.disabled = !enabled; });
 }
@@ -53,7 +55,7 @@ function invalidate() {
 })();
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && ("odooMailCache" in changes || "lastSync" in changes)) {
+  if (area === "local" && ("odooMailCache" in changes || "lastOdooSync" in changes)) {
     refreshCacheInfo();
   }
 });
@@ -134,11 +136,22 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
 });
 
 saveSyncBtn.addEventListener("click", async () => {
-  const maxAgeDays = parseInt(maxAgeInput.value, 10) || 365;
+  const raw = parseInt(maxAgeInput.value, 10);
+  const maxAgeDays = Number.isNaN(raw) ? 365 : Math.max(0, raw);
   const syncLimit = parseInt(syncLimitInput.value, 10);
   await browser.storage.local.set({ maxAgeDays, syncLimit: syncLimit || 0 });
   status.textContent = "Sync settings saved";
   refreshCacheInfo();
+});
+
+countBtn.addEventListener("click", async () => {
+  countBtn.disabled = true;
+  countResult.textContent = "Counting…";
+  const raw = parseInt(maxAgeInput.value, 10);
+  const maxAgeDays = Number.isNaN(raw) ? 365 : Math.max(0, raw);
+  const result = await browser.runtime.sendMessage({ action: "countOdooMessages", maxAgeDays });
+  countResult.textContent = result?.ok ? result.count + " messages" : "Error: " + (result?.error || "unknown");
+  countBtn.disabled = false;
 });
 
 syncNowBtn.addEventListener("click", async () => {

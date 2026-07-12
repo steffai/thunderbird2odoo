@@ -1,15 +1,24 @@
 # Changelog
 
-## 0.5.2
+## 0.6.0
 
 ### Features
 
 - **Email status bar**: a colored status bar now appears in the message reader when viewing an email that has been checked against Odoo (via the right-click menu). Shows whether the email (or its predecessor) was found in Odoo, with buttons to open, verify, or add the email. Status is cached per email and persists across restarts.
-- **Clear Odoo Cache**: a "Clear Odoo Cache" button in the options page lets users invalidate all cached statuses (useful after switching Odoo servers).
+- **Sync from Odoo**: bulk-fetches message IDs from Odoo (within a configurable max-age window) into the local cache. Supports incremental sync (since last sync) and a configurable limit.
+- **Verify multiple messages**: select multiple emails and verify them in batch; the menu label reflects the count (e.g. *Verify 3 messages*).
+- **Count button**: preview how many messages Odoo will return for the current max-age setting before syncing.
+- **Clear Odoo Cache**: button in the options page to invalidate all cached statuses.
+- **Options sync section**: max age, sync limit, cache entry count, last sync time (auto-refreshes via `storage.onChanged`).
 
 ### Changes
 
-- **Internal**: refactored `handleOdooImporter` into reusable `importMessageById` and `verifyMessageById` functions
+- **Internal**: refactored `handleOdooImporter` into reusable `importMessageById` and `verifyMessageById` functions.
+- **Clipboard copy**: moved entirely to background script (display scripts cannot access `navigator.clipboard`; requires `clipboardWrite` permission).
+- **`search_count` endpoint**: used for estimated message counts before sync.
+- **Odoo datetime handling**: ISO strings stripped of trailing `Z` to avoid Odoo parse errors.
+- **`setup()` menu fix**: `menuIds` set is never cleared (was cleared on every `setup()` call without being repopulated, breaking the `onShown` listener).
+- **parent cache lookup**: display script falls back to predecessor cache entries when the current message is not cached, reducing noise for new messages in known threads.
 
 ## 0.5.1
 

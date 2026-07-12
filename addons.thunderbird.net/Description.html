@@ -1,5 +1,8 @@
 Odoo Email Importer is a Thunderbird add-on that allows you to export emails
 from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
+An <strong>email status card</strong> appears above each message, showing
+whether it is already known in Odoo with direct links to the corresponding
+record.
 
 <b>Requirements</b>
 
@@ -11,9 +14,10 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
       <a href="https://apps.odoo.com/apps/modules/19.0/mail_manual_routing"
         >mail_manual_routing</a
       >
-      helps handle new or unrelated emails that might otherwise not be visible
-      in Odoo. Without this extension, emails imported as <em>Generic</em> may
-      not appear. Imported emails as <em>Opportunity (CRM Lead)</em> will work in standard Odoo installations.
+      improves handling of new or unrelated emails that might otherwise not be
+      visible in Odoo. Without this extension, emails imported as
+      <em>Generic</em> may not appear. Imported as
+      <em>Opportunity (CRM Lead)</em> they work in standard Odoo installations.
     </li>
   </ul>
 </ul>
@@ -48,6 +52,30 @@ from Thunderbird into the ERP software <a href="https://www.odoo.com">Odoo</a>.
 
 <b>Usage</b>
 
-After configuration, emails can be imported into Odoo using the context menu.
-Right-click an email and select
-<em>"Odoo Email Importer"</em>.
+<ul>
+  <li>
+    <strong>Email status card</strong> — When viewing an email, a status bar
+    at the top shows whether it is known in Odoo (<em>found</em> with a green
+    dot, <em>not found</em> with a red cross). Click the Odoo links to open
+    the record. If only a predecessor email is known, the bar shows an amber
+    dot and a link to the parent.
+  </li>
+  <li>
+    <strong>Verify</strong> — Click the <em>Verify</em> button in the status
+    card to check if the current email exists in Odoo. You can also verify
+    multiple emails at once via right-click → <em>Odoo Email Importer</em> →
+    <em>Verify</em> in the message list.
+  </li>
+  <li>
+    <strong>Import</strong> — Right-click an email and select
+    <em>Odoo Email Importer</em> → <em>Import this email</em>. If a
+    predecessor (In-Reply-To / References) is already in Odoo, you will be
+    asked to confirm before importing.
+  </li>
+  <li>
+    <strong>Sync from Odoo</strong> — Right-click in the message list and
+    select <em>Odoo Email Importer</em> → <em>Sync from Odoo</em> to batch-
+    cache the Odoo status of recent emails, making the status card show
+    results instantly without individual lookups.
+  </li>
+</ul>
