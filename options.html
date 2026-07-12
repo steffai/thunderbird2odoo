@@ -68,8 +68,9 @@
       ><br /><br />
 
       <button id="test" type="button">Test connection</button>
+      <span id="testStatus" style="margin-left:0.5rem;font-size:0.9em"></span>
+      <br /><br />
       <button id="save" type="submit" disabled>Save</button>
-      <button id="clearCache" type="button" style="margin-left:2rem">Clear Cache</button>
     </form>
 
     <hr />
@@ -83,15 +84,16 @@
       </label>
       <br /><br />
       <label>
-        Sync limit (max messages):<br />
-        <input id="syncLimit" type="number" min="1" value="10000" />
+        Sync limit (0 = unlimited):<br />
+        <input id="syncLimit" type="number" min="0" value="10000" />
       </label>
       <br /><br />
       <button id="saveSync" type="button">Save</button>
     </form>
 
     <br />
-    <button id="syncNow" type="button">Sync now</button>
+    <button id="clearCache" type="button" style="margin-right:0.5rem">Clear Cache</button>
+    <button id="syncNow" type="button">Sync</button>
 
     <p class="info" id="cacheInfo"></p>
 

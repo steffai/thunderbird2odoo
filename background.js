@@ -5,16 +5,15 @@
 
 import { testOdooConnection, getConnectionInfo, findMail, buildUrl, searchMailMessages } from "./lib/odooClient.js";
 import { uploadMail, decodeRawMail } from "./lib/odooMailUpload.js";
-import { getCachedResult, setCachedResult, clearAllCache, getCacheSize, getLastSync, setLastSync } from "./lib/mailCache.js";
+import { getCachedResult, setCachedResult, clearAllCache, getCacheSize, getLastSync, setLastSync, CACHE_KEY } from "./lib/mailCache.js";
 
 const MENU_ID_IMPORTER = "odoo-importer";
 const MENU_ID_IMPORT = "odoo-import";
 const MENU_ID_VERIFY = "odoo-verify";
 const MENU_ID_SYNC = "odoo-sync";
-const MENU_ID_SYNC_ALL = "odoo-sync-all";
 
 const menuIds = new Set();
-menuIds.add(MENU_ID_IMPORTER).add(MENU_ID_IMPORT).add(MENU_ID_VERIFY).add(MENU_ID_SYNC).add(MENU_ID_SYNC_ALL);
+menuIds.add(MENU_ID_IMPORTER).add(MENU_ID_IMPORT).add(MENU_ID_VERIFY).add(MENU_ID_SYNC);
 
 function notify(title, message, sticky = false) {
   console.debug(title + ": " + message);
@@ -44,7 +43,7 @@ function buildNotification(prefix, r) {
   switch (r.status) {
     case "ok":
     case "found":
-      if (r.is_unattached) {
+      if (r.model === "lost.message.parent" && r.thread_id === 1) {
         title = "Odoo – Lost Messages";
         message = prefix + " in Lost Messages";
       } else if (r.model) {
@@ -59,7 +58,7 @@ function buildNotification(prefix, r) {
       message = prefix + " to Lost Messages";
       break;
     case "duplicate":
-      if (r.is_unattached) {
+      if (r.model === "lost.message.parent" && r.thread_id === 1) {
         title = "Odoo – Lost Messages";
       } else if (r.model) {
         title = "Odoo – " + r.model + " " + (r.thread_id || "");
@@ -87,7 +86,7 @@ function buildNotification(prefix, r) {
 
 async function showResult(prefix, r, cfg, sticky = false) {
   if (!r.url) {
-    r.url = buildUrl(cfg, r.model, r.thread_id, r.message_id, r.is_unattached);
+    r.url = buildUrl(cfg, r.model, r.thread_id, r.message_id);
   }
   const n = buildNotification(prefix, r);
   let message = n.message;
@@ -171,13 +170,6 @@ async function setup() {
     icons: icon,
   });
 
-  browser.menus.create({
-    id: MENU_ID_SYNC_ALL,
-    title: "Sync All (clear & resync)",
-    parentId: MENU_ID_IMPORTER,
-    contexts: ["message_list"],
-    icons: icon,
-  });
 }
 
 browser.menus.onShown.addListener((info) => {
@@ -185,9 +177,11 @@ browser.menus.onShown.addListener((info) => {
   const selectedCount = info.selectedMessages?.messages?.length ?? 0;
   browser.menus.update(MENU_ID_IMPORTER, { visible: selectedCount >= 1 });
   browser.menus.update(MENU_ID_IMPORT, { visible: selectedCount === 1 });
-  browser.menus.update(MENU_ID_VERIFY, { visible: selectedCount >= 1 });
+  browser.menus.update(MENU_ID_VERIFY, {
+    visible: selectedCount >= 1,
+    title: selectedCount > 1 ? "Verify " + selectedCount + " messages" : "Verify",
+  });
   browser.menus.update(MENU_ID_SYNC, { visible: true });
-  browser.menus.update(MENU_ID_SYNC_ALL, { visible: true });
   browser.menus.refresh();
 });
 
@@ -290,7 +284,7 @@ async function importMessageById(messageId) {
       parentMessageId: null,
     });
     await showResult("Email found in Odoo", result, cfg, true);
-    return;
+    return mid;
   }
 
   // Step 2: Check predecessor(s) from In-Reply-To / References
@@ -314,7 +308,7 @@ async function importMessageById(messageId) {
       url: null,
       parentMessageId: predMessageId,
     });
-    const url = buildUrl(cfg, predFound.model, predFound.thread_id, predFound.message_id, predFound.is_unattached);
+    const url = buildUrl(cfg, predFound.model, predFound.thread_id, predFound.message_id);
     const btnIdx = await showDialog(
       "Odoo Email Importer",
       "Predecessor email found" + (url ? " at " + url : "") + ". Import this email?",
@@ -323,7 +317,7 @@ async function importMessageById(messageId) {
     if (btnIdx === 0) {
       await uploadAndShowResult(cfg, false, "Email imported", decoded, mid);
     }
-    return;
+    return mid;
   }
 
   // Step 3: No predecessor found
@@ -344,6 +338,7 @@ async function importMessageById(messageId) {
   } else if (btnIdx === 1) {
     await uploadAndShowResult(cfg, false, "Email imported", decoded, mid);
   }
+  return mid;
 }
 
 async function verifyMessageById(messageId) {
@@ -351,6 +346,7 @@ async function verifyMessageById(messageId) {
   const raw = await messenger.messages.getRaw(messageId);
   const mid = getMessageIdFromRaw(raw);
   if (!mid) return null;
+  const decoded = decodeRawMail(raw);
 
   const result = await findMail(cfg, mid);
   if (result.status === "found") {
@@ -396,51 +392,52 @@ async function uploadAndShowResult(cfg, model, prefix, decoded, messageId) {
   const rawResult = await uploadMail(cfg, decoded, model);
   console.debug("uploadAndShowResult: rawResult=" + JSON.stringify(rawResult));
 
-  function cacheFound(found) {
-    if (!messageId) return;
-    setCachedResult(messageId, {
-      status: "found",
-      model: found.model || false,
-      resId: found.thread_id || false,
-      url: found.url || false,
-      parentMessageId: null,
-    });
-  }
-
-  function cacheNotFound() {
-    if (!messageId) return;
-    setCachedResult(messageId, {
-      status: "not_found",
-      model: null,
-      resId: null,
-      url: null,
-      parentMessageId: null,
-    });
-  }
-
   if (rawResult) {
     // message_process returned a thread_id — email was routed successfully.
+    // Try to find the message in Odoo to get the exact URL.
+    let found = null;
     if (messageId) {
       try {
-        const found = await findMail(cfg, messageId);
-        if (found.status === "found") {
-          cacheFound(found);
-          await showResult(prefix, found, cfg, true);
-          return;
-        }
+        found = await findMail(cfg, messageId);
       } catch (err) {
         console.debug("uploadAndShowResult: findMail failed: " + err.message);
       }
     }
-    // Fallback notification without URL
-    notify("Odoo", prefix + " (" + (model ? model + " " : "thread ") + rawResult + ")");
+    if (found?.status === "found") {
+      if (messageId) setCachedResult(messageId, {
+        status: "found",
+        model: found.model || false,
+        resId: found.thread_id || false,
+        url: found.url || false,
+        parentMessageId: null,
+      });
+      await showResult(prefix, found, cfg, true);
+    } else {
+      // Odoo queued the mail but hasn't indexed it yet — cache with model+thread_id
+      const url = model && rawResult ? buildUrl(cfg, model, rawResult, null) : false;
+      if (messageId) setCachedResult(messageId, {
+        status: "found",
+        model: model || false,
+        resId: rawResult || false,
+        url: url || false,
+        parentMessageId: null,
+      });
+      const r = { url, model, thread_id: rawResult, message_id: null };
+      await showResult(prefix, r, cfg, true);
+    }
   } else if (rawResult === false) {
     if (messageId) {
       try {
         const found = await findMail(cfg, messageId);
         if (found.status === "found") {
-          cacheFound(found);
-          if (found.is_unattached) {
+          if (messageId) setCachedResult(messageId, {
+            status: "found",
+            model: found.model || false,
+            resId: found.thread_id || false,
+            url: found.url || false,
+            parentMessageId: null,
+          });
+          if (found.model === "lost.message.parent" && found.thread_id === 1) {
             await showResult(prefix, found, cfg, true);
           } else {
             await showResult("Email already in Odoo (duplicate)", found, cfg, true);
@@ -451,10 +448,22 @@ async function uploadAndShowResult(cfg, model, prefix, decoded, messageId) {
         console.debug("uploadAndShowResult: findMail failed: " + err.message);
       }
     }
-    cacheNotFound();
+    if (messageId) setCachedResult(messageId, {
+      status: "not_found",
+      model: null,
+      resId: null,
+      url: null,
+      parentMessageId: null,
+    });
     notify("Odoo", "Email not imported: Odoo could not route this email to any model");
   } else {
-    cacheNotFound();
+    if (messageId) setCachedResult(messageId, {
+      status: "not_found",
+      model: null,
+      resId: null,
+      url: null,
+      parentMessageId: null,
+    });
     notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
   }
 }
@@ -475,13 +484,12 @@ browser.menus.onClicked.addListener(async (info) => {
   } else if (info.menuItemId === MENU_ID_VERIFY) {
     const messages = info.selectedMessages?.messages;
     if (!messages?.length) return;
+    notify("Odoo", "Verifying " + messages.length + " messages…");
     for (const msg of messages) {
       await verifyMessageById(msg.id);
     }
+    notify("Odoo", "Verify complete for " + messages.length + " messages");
   } else if (info.menuItemId === MENU_ID_SYNC) {
-    await syncFromOdoo();
-  } else if (info.menuItemId === MENU_ID_SYNC_ALL) {
-    await clearAllCache();
     await syncFromOdoo();
   }
 });
@@ -492,7 +500,7 @@ async function getSenderTabMessageId(sender) {
   return message?.id ?? null;
 }
 
-async function syncFromOdoo() {
+async function syncFromOdoo(forceFull = false) {
   const cfg = await get_config();
   if (!cfg.url || !cfg.apikey) {
     notify("Odoo", "Configure the addon in Options first");
@@ -502,16 +510,21 @@ async function syncFromOdoo() {
   const maxAgeDays = prefs.maxAgeDays ?? 365;
   const syncLimit = prefs.syncLimit ?? 10000;
 
-  const lastSync = await getLastSync();
   let since;
-  if (lastSync) {
-    since = new Date(lastSync);
-    since.setDate(since.getDate() - 1);
-  } else {
+  if (forceFull) {
     since = new Date();
     since.setDate(since.getDate() - maxAgeDays);
+  } else {
+    const lastSync = await getLastSync();
+    if (lastSync) {
+      since = new Date(lastSync);
+      since.setDate(since.getDate() - 1);
+    } else {
+      since = new Date();
+      since.setDate(since.getDate() - maxAgeDays);
+    }
   }
-  const sinceStr = since.toISOString();
+  const sinceStr = since.toISOString().replace("Z", "");
 
   notify("Odoo", "Syncing from Odoo (since " + sinceStr.slice(0, 10) + ")…");
   console.debug("syncFromOdoo: since=" + sinceStr + " limit=" + syncLimit);
@@ -519,20 +532,27 @@ async function syncFromOdoo() {
   let count = 0;
   try {
     const results = await searchMailMessages(cfg, sinceStr, syncLimit);
+    const data = await browser.storage.local.get(CACHE_KEY);
+    const cache = data[CACHE_KEY] || {};
     for (const msg of results) {
       if (!msg.message_id) continue;
-      const url = buildUrl(cfg, msg.model, msg.res_id, msg.id, msg.is_unattached);
-      await setCachedResult(msg.message_id, {
+      const url = buildUrl(cfg, msg.model, msg.res_id, msg.id);
+      cache[String(msg.message_id)] = {
         status: "found",
         model: msg.model || false,
         resId: msg.res_id || false,
         url: url || false,
         parentMessageId: null,
-      });
+      };
       count++;
     }
+    await browser.storage.local.set({ [CACHE_KEY]: cache });
     await setLastSync(new Date().toISOString());
-    notify("Odoo", "Sync complete: " + count + " messages cached");
+    const total = await getCacheSize();
+    const dups = count - total;
+    let msg = count + " messages retrieved from Odoo. Total cache size: " + total + ".";
+    if (dups > 0) msg += " (" + dups + " duplicates)";
+    notify("Odoo", msg);
   } catch (err) {
     notify("Odoo \u2013 Error", "Sync failed: " + err.message);
   }
@@ -574,14 +594,24 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
         for (const pid of pids) {
           const parentEntry = await getCachedResult(pid);
           if (parentEntry) {
-            entry = {
-              status: "parent_found",
-              model: null,
-              resId: null,
-              url: null,
-              parentMessageId: pid,
-              parentUrl: parentEntry.url,
-            };
+            if (parentEntry.status === "found" && parentEntry.url) {
+              entry = {
+                status: "parent_found",
+                model: null,
+                resId: null,
+                url: null,
+                parentMessageId: pid,
+                parentUrl: parentEntry.url,
+              };
+            } else {
+              entry = {
+                status: "not_found",
+                model: null,
+                resId: null,
+                url: null,
+                parentMessageId: null,
+              };
+            }
             await setCachedResult(mid, entry);
             break;
           }
@@ -598,24 +628,33 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
     if (msg.action === "verifyMessage") {
       const msgId = msg.messageId || await getSenderTabMessageId(sender);
       if (!msgId) return null;
-      const result = await verifyMessageById(msgId);
-      if (result) {
-        if (result.parentMessageId) {
+      try {
+        const result = await verifyMessageById(msgId);
+        if (result && result.parentMessageId) {
           const parentEntry = await getCachedResult(result.parentMessageId);
           if (parentEntry) result.parentUrl = parentEntry.url;
         }
-        const statusLabel = result.status === "found" ? "found in Odoo" :
-          result.status === "parent_found" ? "predecessor found" : "not found";
-        notify("Odoo \u2013 Status", "Verification complete: " + statusLabel);
+        const url = result?.url || result?.parentUrl;
+        if (url) result.urlCopied = await copyToClipboard(url);
+        return result;
+      } catch (err) {
+        return { ok: false, error: err.message };
       }
-      return result;
     }
 
     if (msg.action === "addMessage") {
       const msgId = msg.messageId || await getSenderTabMessageId(sender);
       if (!msgId) return null;
-      await importMessageById(msgId);
-      return await verifyMessageById(msgId);
+      const mid = await importMessageById(msgId);
+      if (!mid) return null;
+      const entry = await getCachedResult(mid);
+      if (entry && entry.parentMessageId) {
+        const parentEntry = await getCachedResult(entry.parentMessageId);
+        if (parentEntry) entry.parentUrl = parentEntry.url;
+      }
+      const url = entry?.url || entry?.parentUrl;
+      if (url) entry.urlCopied = await copyToClipboard(url);
+      return entry || null;
     }
 
     if (msg.action === "clearCache") {
@@ -627,6 +666,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
       await syncFromOdoo();
       return { ok: true };
     }
+
 
     if (msg.action === "getCacheInfo") {
       const size = await getCacheSize();

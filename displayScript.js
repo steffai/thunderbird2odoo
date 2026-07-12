@@ -1,3 +1,6 @@
+var _lastAction = null;
+var _ignoreNextCacheChange = false;
+
 function renderBar(d, container) {
   if (!d || !d.status) return null;
 
@@ -54,9 +57,16 @@ function renderBar(d, container) {
     l.appendChild(x);
   }
 
-  addBtn("Verify", function () { sendAction("verifyMessage", container); });
+  if (_lastAction) {
+    var a = document.createElement("span");
+    a.textContent = " [" + _lastAction + "]";
+    a.style.cssText = "font-size:11px;color:#888";
+    l.appendChild(a);
+  }
+
+  addBtn("Verify", function () { doAction("verifyMessage"); });
   if (d.status === "parent_found" || d.status === "not_found") {
-    addBtn("Add", function () { sendAction("addMessage", container); });
+    addBtn("Add", function () { doAction("addMessage"); });
   }
 
   b.appendChild(l);
@@ -65,15 +75,19 @@ function renderBar(d, container) {
   return b;
 }
 
-function sendAction(action, container) {
+function doAction(action) {
   messenger.runtime.sendMessage({ action: action }).then(function (r) {
     if (r && r.status) {
-      var url = r.url || r.parentUrl;
-      if (url) {
-        navigator.clipboard.writeText(url).catch(function () {});
-      }
+      _lastAction = action === "verifyMessage" ? "verified" : "added";
+      if (r.urlCopied) _lastAction += ", URL copied";
+      _ignoreNextCacheChange = true;
+      var container = document.getElementById("messagepane") || document.body;
       renderBar(r, container);
+      return;
     }
+    refreshBar();
+  }, function () {
+    refreshBar();
   });
 }
 
@@ -87,6 +101,10 @@ function refreshBar() {
 
 messenger.storage.onChanged.addListener(function (changes, area) {
   if (area === "local" && changes.odooMailCache) {
+    if (_ignoreNextCacheChange) {
+      _ignoreNextCacheChange = false;
+      return;
+    }
     refreshBar();
   }
 });
