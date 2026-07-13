@@ -4,7 +4,10 @@
   "version": "0.6.0",
   "description": "Transfer selected email to Odoo",
   "browser_specific_settings": {
-    "gecko": { "id": "@thunderbird2odoo.bareos.joergsteffens", "strict_min_version": "115.0" }
+    "gecko": {
+      "id": "@thunderbird2odoo.bareos.joergsteffens",
+      "strict_min_version": "115.0"
+    }
   },
   "permissions": [
     "menus",
@@ -14,9 +17,7 @@
     "storage",
     "clipboardWrite"
   ],
-  "optional_permissions": [
-    "*://*/*"
-  ],
+  "optional_permissions": ["*://*/*"],
   "background": {
     "scripts": ["background.js"],
     "type": "module"

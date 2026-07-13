@@ -1,5 +1,6 @@
 var _lastAction = null;
 var _ignoreNextCacheChange = false;
+var _pendingAction = false;
 
 function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
@@ -111,10 +112,13 @@ function renderBar(d, container) {
 }
 
 function doAction(action) {
+  if (_pendingAction) return;
+  _pendingAction = true;
   messenger.runtime
     .sendMessage({ action: action })
     .then(
       function (r) {
+        _pendingAction = false;
         if (r && r.status) {
           if (action === "addMessage" && !r.success) {
             _lastAction = null;
@@ -131,13 +135,17 @@ function doAction(action) {
         refreshBar();
       },
       function () {
+        _pendingAction = false;
         refreshBar();
       },
     )
-    .catch(function () {});
+    .catch(function () {
+      _pendingAction = false;
+    });
 }
 
 function refreshBar() {
+  _lastAction = null;
   messenger.runtime
     .sendMessage({ action: "getOdooStatus" })
     .then(

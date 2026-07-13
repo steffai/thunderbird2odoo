@@ -327,8 +327,10 @@ function collectPredecessorIds(inReplyToRaw, referencesRaw) {
 function extractPredecessorIds(decoded) {
   const irtMatch = decoded.match(/^In-Reply-To:\s*<([^>]+)>/im);
   const inReplyTo = irtMatch ? "<" + irtMatch[1] + ">" : null;
-  const refsMatch = decoded.match(/^References:\s*(.+)$/im);
-  const references = refsMatch ? refsMatch[1] : null;
+  const refsMatch = decoded.match(/^References:\s*((?:.+(?:\r?\n[ \t].+)*))/im);
+  const references = refsMatch
+    ? refsMatch[1].replace(/\r?\n[ \t]+/g, " ")
+    : null;
   return collectPredecessorIds(inReplyTo, references);
 }
 
@@ -525,14 +527,13 @@ async function uploadAndShowResult(cfg, model, prefix, decoded, messageId) {
         await showResult("Email already in Odoo (duplicate)", found, cfg, true);
         return;
       }
+      if (found !== null) await cacheNotFoundResult(messageId);
     }
-    if (messageId) await cacheNotFoundResult(messageId);
     notify(
       "Odoo",
       "Email not imported: Odoo could not route this email to any model",
     );
   } else {
-    if (messageId) await cacheNotFoundResult(messageId);
     notify(
       "Odoo",
       "Email not imported: ignored by Odoo (loop detection or bounce)",
@@ -583,7 +584,9 @@ browser.menus.onClicked.addListener(async (info, tab) => {
     await syncFromOdoo();
   }
   if (tab?.id) {
-    browser.tabs.sendMessage(tab.id, { action: "refreshOdooStatus" });
+    browser.tabs.sendMessage(tab.id, { action: "refreshOdooStatus" }).catch(
+      function () {},
+    );
   }
 });
 

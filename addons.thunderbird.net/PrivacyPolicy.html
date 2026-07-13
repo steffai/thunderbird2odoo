@@ -6,7 +6,12 @@ add-on does not collect, track, or transmit personal data to any third party.
 The add-on accesses email content, headers, and attachments
 <strong>only when explicitly triggered by the user</strong>
 via the Thunderbird context menu. Accessed data is used solely for the purpose
-of importing the selected email into the user’s own Odoo server.
+of importing the selected email into the user's own Odoo server.
+<br /><br />
+When viewing an email, the add-on automatically reads the message identifier
+(Message-ID header) to look up the Odoo status from the local cache and display
+the status bar. No data is transmitted during this process; only locally cached
+information is used.
 
 <b>Data Transmission</b>
 

@@ -68,7 +68,12 @@
       ><br /><br />
 
       <button id="test" type="button">Test connection</button>
-      <span id="testStatus" style="margin-left:0.5rem;font-size:0.9em"></span>
+      <span
+        id="testStatus"
+        role="status"
+        aria-live="polite"
+        style="margin-left: 0.5rem; font-size: 0.9em"
+      ></span>
       <br /><br />
       <button id="save" type="submit" disabled>Save</button>
     </form>
@@ -90,11 +95,18 @@
       <br /><br />
       <button id="saveSync" type="button">Save</button>
       <button id="countBtn" type="button">Count</button>
-      <span id="countResult" style="margin-left:0.5rem;font-size:0.9em"></span>
+      <span
+        id="countResult"
+        role="status"
+        aria-live="polite"
+        style="margin-left: 0.5rem; font-size: 0.9em"
+      ></span>
     </form>
 
     <br />
-    <button id="clearCache" type="button" style="margin-right:0.5rem">Clear Cache</button>
+    <button id="clearCache" type="button" style="margin-right: 0.5rem">
+      Clear Cache
+    </button>
     <button id="syncNow" type="button">Sync</button>
 
     <p class="info" id="cacheInfo"></p>
