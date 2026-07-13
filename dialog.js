@@ -3,11 +3,7 @@ function renderMessage(text) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
   for (const part of parts) {
     if (part.match(/^https?:\/\//)) {
-      const a = document.createElement("a");
-      a.href = part;
-      a.textContent = part;
-      a.rel = "noreferrer";
-      el.appendChild(a);
+      el.appendChild(makeLink(part));
     } else {
       el.appendChild(document.createTextNode(part));
     }
@@ -29,25 +25,18 @@ function renderMessage(text) {
 
   const container = document.getElementById("buttons");
   for (const btn of buttons) {
-    const el = document.createElement("button");
-    el.textContent = btn.title;
-    if (btn.tooltip) el.title = btn.tooltip;
-    el.addEventListener("click", () => {
+    container.appendChild(createButton(btn.title, () => {
       browser.runtime.sendMessage({
         action: "dialogChoice",
         windowId: win.id,
         choice: btn.value,
       });
       window.close();
-    });
-    container.appendChild(el);
+    }, btn.tooltip));
   }
 
   if (buttons.length === 0) {
-    const el = document.createElement("button");
-    el.textContent = "OK";
-    el.addEventListener("click", () => window.close());
-    container.appendChild(el);
+    container.appendChild(createButton("OK", () => window.close()));
   }
 
   document.addEventListener("click", (e) => {

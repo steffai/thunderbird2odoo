@@ -20,23 +20,6 @@ function renderBar(d, container) {
   var btnRow = document.createElement("div");
   btnRow.style.cssText = "width:100%;display:flex;gap:6px";
 
-  function addBtn(text, onClick) {
-    var n = document.createElement("button");
-    n.textContent = text;
-    n.style.cssText = "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
-    n.addEventListener("click", onClick);
-    btnRow.appendChild(n);
-  }
-
-  function makeLink(url) {
-    var a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noreferrer";
-    a.textContent = url;
-    a.style.cssText = "color:#1a73e8;text-decoration:underline;cursor:pointer";
-    return a;
-  }
   
   function appendStatusElement(l, status) {
     var e = document.createElement("span");
@@ -66,18 +49,20 @@ function renderBar(d, container) {
     }
   }
 
+  function renderStatusLine(l, status, label, modelUrl, messageUrl) {
+    if (label) l.appendChild(document.createTextNode(label));
+    appendUrls(l, modelUrl, messageUrl);
+    appendStatusElement(l, status);
+  }
+
   l.appendChild(document.createTextNode("Odoo: "));
 
   if (d.status === "found") {
-    appendUrls(l, d.modelUrl, d.messageUrl);
-    appendStatusElement(l, d.status);
+    renderStatusLine(l, d.status, null, d.modelUrl, d.messageUrl);
   } else if (d.status === "parent_found") {
-    l.appendChild(document.createTextNode("not found, only parent "));
-    appendUrls(l, d.parentModelUrl, d.parentMessageUrl);
-    appendStatusElement(l, d.status);
+    renderStatusLine(l, d.status, "not found, only parent ", d.parentModelUrl, d.parentMessageUrl);
   } else if (d.status === "not_found") {
-    l.appendChild(document.createTextNode("not found"));
-    appendStatusElement(l, d.status);
+    renderStatusLine(l, d.status, "not found", null, null);
   }
 
   if (_lastAction) {
@@ -87,9 +72,10 @@ function renderBar(d, container) {
     l.appendChild(a);
   }
 
-  addBtn("Verify", function () { doAction("verifyMessage"); });
+  var btnStyle = "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
+  btnRow.appendChild(createButton("Verify", function () { doAction("verifyMessage"); }, null, btnStyle));
   if (d.status === "parent_found" || d.status === "not_found") {
-    addBtn("Add", function () { doAction("addMessage"); });
+    btnRow.appendChild(createButton("Add", function () { doAction("addMessage"); }, null, btnStyle));
   }
 
   b.appendChild(l);
