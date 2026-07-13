@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Odoo Email Importer – Settings</title>
+    <title>Odoo Email Connector – Settings</title>
     <style>
       body {
         font-family: sans-serif;
@@ -14,14 +14,26 @@
         display: inline-block;
       }
       input[type="text"],
-      input[type="password"] {
+      input[type="password"],
+      input[type="number"] {
         width: 100%;
         padding: 0.3rem;
         box-sizing: border-box;
       }
+      input[type="number"] {
+        width: 6rem;
+      }
       button {
         padding: 0.4rem 1rem;
         margin-right: 0.5rem;
+      }
+      hr {
+        margin: 1.5rem 0;
+      }
+      .info {
+        font-size: 0.9em;
+        color: #555;
+        margin: 0.5rem 0;
       }
       #status {
         margin-top: 1rem;
@@ -56,8 +68,48 @@
       ><br /><br />
 
       <button id="test" type="button">Test connection</button>
+      <span
+        id="testStatus"
+        role="status"
+        aria-live="polite"
+        style="margin-left: 0.5rem; font-size: 0.9em"
+      ></span>
+      <br /><br />
       <button id="save" type="submit" disabled>Save</button>
     </form>
+
+    <hr />
+
+    <h3>Odoo Sync</h3>
+
+    <form id="syncSettings">
+      <label>
+        Max age (days, 0 = unlimited):<br />
+        <input id="maxAgeDays" type="number" min="0" value="365" />
+      </label>
+      <br /><br />
+      <label>
+        Sync limit (0 = unlimited):<br />
+        <input id="syncLimit" type="number" min="0" value="10000" />
+      </label>
+      <br /><br />
+      <button id="saveSync" type="button">Save</button>
+      <button id="countBtn" type="button">Count</button>
+      <span
+        id="countResult"
+        role="status"
+        aria-live="polite"
+        style="margin-left: 0.5rem; font-size: 0.9em"
+      ></span>
+    </form>
+
+    <br />
+    <button id="clearCache" type="button" style="margin-right: 0.5rem">
+      Clear Cache
+    </button>
+    <button id="syncNow" type="button">Sync</button>
+
+    <p class="info" id="cacheInfo"></p>
 
     <p id="status"></p>
 

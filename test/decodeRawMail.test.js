@@ -56,5 +56,8 @@ test("decodeRawMail exposes mojibake-free text through JSON.stringify", () => {
   const decoded = decodeRawMail(raw);
   // The whole point of the fix: JSON round-trip must contain the real chars.
   assert.equal(JSON.stringify(decoded), '"Universität"');
-  assert.ok(!/Ã/.test(JSON.stringify(decoded)), "decoded text must not contain mojibake");
+  assert.ok(
+    !/Ã/.test(JSON.stringify(decoded)),
+    "decoded text must not contain mojibake",
+  );
 });
