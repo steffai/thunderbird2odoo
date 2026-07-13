@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "Odoo Email Importer",
+  "name": "Odoo Email Connector",
   "version": "0.6.0",
   "description": "Transfer selected email to Odoo",
   "browser_specific_settings": {

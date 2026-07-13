@@ -1,11 +1,28 @@
 /********************************************************************
- * Odoo Mail Importer – Thunderbird MailExtension
+ * Odoo Email Connector – Thunderbird MailExtension
  * Odoo >= 19
  ********************************************************************/
 
-import { testOdooConnection, getConnectionInfo, findMail, buildOdooUrl, searchMailMessages, countMailMessages, unifyMessageId } from "./lib/odooClient.js";
+import {
+  testOdooConnection,
+  getConnectionInfo,
+  findMail,
+  buildOdooUrl,
+  searchMailMessages,
+  countMailMessages,
+  unifyMessageId,
+} from "./lib/odooClient.js";
 import { uploadMail, decodeRawMail } from "./lib/odooMailUpload.js";
-import { getCachedResult, setCachedResult, setCachedResults, clearAllCache, getCacheSize, getLastSync, setLastSync, CACHE_KEY } from "./lib/mailCache.js";
+import {
+  getCachedResult,
+  setCachedResult,
+  setCachedResults,
+  clearAllCache,
+  getCacheSize,
+  getLastSync,
+  setLastSync,
+  CACHE_KEY,
+} from "./lib/mailCache.js";
 
 const MENU_ID_IMPORTER = "odoo-importer";
 const MENU_ID_IMPORT = "odoo-import";
@@ -13,32 +30,56 @@ const MENU_ID_VERIFY = "odoo-verify";
 const MENU_ID_SYNC = "odoo-sync";
 
 const menuIds = new Set();
-menuIds.add(MENU_ID_IMPORTER).add(MENU_ID_IMPORT).add(MENU_ID_VERIFY).add(MENU_ID_SYNC);
+menuIds
+  .add(MENU_ID_IMPORTER)
+  .add(MENU_ID_IMPORT)
+  .add(MENU_ID_VERIFY)
+  .add(MENU_ID_SYNC);
 
 const EN_DASH = "\u2013";
 
 async function cacheFoundResult(entryId, model, resId, odooMessageId) {
-  const entry = { status: "found", model: model || false, resId: resId || false, odooMessageId: odooMessageId || null, parentMessageId: null };
+  const entry = {
+    status: "found",
+    model: model || false,
+    resId: resId || false,
+    odooMessageId: odooMessageId || null,
+    parentMessageId: null,
+  };
   await setCachedResult(entryId, entry);
   return entry;
 }
 
 async function cacheParentFoundResult(entryId, parentMessageId) {
-  const entry = { status: "parent_found", model: null, resId: null, odooMessageId: null, parentMessageId: parentMessageId };
+  const entry = {
+    status: "parent_found",
+    model: null,
+    resId: null,
+    odooMessageId: null,
+    parentMessageId: parentMessageId,
+  };
   await setCachedResult(entryId, entry);
   return entry;
 }
 
 async function cacheNotFoundResult(entryId) {
-  const entry = { status: "not_found", model: null, resId: null, odooMessageId: null, parentMessageId: null };
+  const entry = {
+    status: "not_found",
+    model: null,
+    resId: null,
+    odooMessageId: null,
+    parentMessageId: null,
+  };
   await setCachedResult(entryId, entry);
   return entry;
 }
 
 function enrichEntry(cfg, entry) {
   if (!entry) return null;
-  if (entry.odooMessageId) entry.messageUrl = buildOdooUrl(cfg, "mail.message", entry.odooMessageId);
-  if (entry.model && entry.resId) entry.modelUrl = buildOdooUrl(cfg, entry.model, entry.resId);
+  if (entry.odooMessageId)
+    entry.messageUrl = buildOdooUrl(cfg, "mail.message", entry.odooMessageId);
+  if (entry.model && entry.resId)
+    entry.modelUrl = buildOdooUrl(cfg, entry.model, entry.resId);
   return entry;
 }
 
@@ -46,9 +87,16 @@ async function enrichWithParentUrl(cfg, entry) {
   if (!entry || !entry.parentMessageId) return entry;
   const parentEntry = await getCachedResult(entry.parentMessageId);
   if (parentEntry) {
-    entry.parentModelUrl = buildOdooUrl(cfg, parentEntry.model, parentEntry.resId);
-    entry.parentMessageUrl = buildOdooUrl(cfg, "mail.message", parentEntry.odooMessageId);
-    entry.parentUrl = entry.parentModelUrl || entry.parentMessageUrl;
+    entry.parentModelUrl = buildOdooUrl(
+      cfg,
+      parentEntry.model,
+      parentEntry.resId,
+    );
+    entry.parentMessageUrl = buildOdooUrl(
+      cfg,
+      "mail.message",
+      parentEntry.odooMessageId,
+    );
   }
   return entry;
 }
@@ -60,7 +108,15 @@ async function enrichFull(cfg, entry) {
 }
 
 function getUrl(entry) {
-  return entry.modelUrl || entry.messageUrl;
+  if (!entry) {
+    return null;
+  }
+  return (
+    entry.modelUrl ||
+    entry.messageUrl ||
+    entry.parentModelUrl ||
+    entry.parentMessageUrl
+  );
 }
 
 async function findPredecessor(cfg, pids) {
@@ -106,11 +162,13 @@ function buildNotification(prefix, r) {
     title = "Odoo – " + r.model + " " + (r.resId || "");
     message = prefix;
   } else {
-    message = prefix + (r.odooMessageId ? " (message " + r.odooMessageId + ")" : "");
+    message =
+      prefix + (r.odooMessageId ? " (message " + r.odooMessageId + ")" : "");
   }
 
   if (r.modelUrl) message += "\n" + r.modelUrl;
-  if (r.messageUrl && r.messageUrl !== r.modelUrl) message += "\n" + r.messageUrl;
+  if (r.messageUrl && r.messageUrl !== r.modelUrl)
+    message += "\n" + r.messageUrl;
 
   return { title, message };
 }
@@ -146,7 +204,12 @@ async function requireConfig() {
 async function findAndCache(cfg, id) {
   const result = await findMail(cfg, id);
   if (result.status === "found") {
-    return await cacheFoundResult(id, result.model, result.resId, result.odooMessageId);
+    return await cacheFoundResult(
+      id,
+      result.model,
+      result.resId,
+      result.odooMessageId,
+    );
   }
   return result;
 }
@@ -176,10 +239,7 @@ async function setup() {
     try {
       await testOdooConnection(cfg);
     } catch (err) {
-      console.warn(
-        "setup: connection test failed, menus still created:",
-        err,
-      );
+      console.warn("setup: connection test failed, menus still created:", err);
     }
   } else {
     console.debug(
@@ -197,7 +257,7 @@ async function setup() {
 
   browser.menus.create({
     id: MENU_ID_IMPORTER,
-    title: "Odoo Email Importer",
+    title: "Odoo Email Connector",
     contexts: ["message_list"],
     icons: icon,
   });
@@ -220,12 +280,11 @@ async function setup() {
 
   browser.menus.create({
     id: MENU_ID_SYNC,
-    title: "Sync from Odoo",
+    title: "Sync message status from Odoo",
     parentId: MENU_ID_IMPORTER,
     contexts: ["message_list"],
     icons: icon,
   });
-
 }
 
 browser.menus.onShown.addListener((info) => {
@@ -235,7 +294,8 @@ browser.menus.onShown.addListener((info) => {
   browser.menus.update(MENU_ID_IMPORT, { visible: selectedCount === 1 });
   browser.menus.update(MENU_ID_VERIFY, {
     visible: selectedCount >= 1,
-    title: selectedCount > 1 ? "Verify " + selectedCount + " messages" : "Verify",
+    title:
+      selectedCount > 1 ? "Verify " + selectedCount + " messages" : "Verify",
   });
   browser.menus.update(MENU_ID_SYNC, { visible: true });
   browser.menus.refresh();
@@ -323,7 +383,7 @@ async function showDialog(title, message, buttons = []) {
   });
 }
 
-async function importMessageById(messageId) {
+async function importMessageById(tbMessageId) {
   const hasPermission = await browser.permissions.contains({
     origins: ["*://*/*"],
   });
@@ -333,7 +393,7 @@ async function importMessageById(messageId) {
     );
   }
 
-  const rawMail = await messenger.messages.getRaw(messageId);
+  const rawMail = await messenger.messages.getRaw(tbMessageId);
   const mid = getMessageIdFromRaw(rawMail);
   if (!mid) throw new Error("Could not extract Message-Id from email");
   console.debug("importMessageById: Message-Id=" + mid);
@@ -352,14 +412,15 @@ async function importMessageById(messageId) {
   // Step 2: Check predecessor(s) from In-Reply-To / References
   const predecessorIds = extractPredecessorIds(decoded);
   const predFound = await findPredecessor(cfg, predecessorIds);
-
   if (predFound) {
     await cacheParentFoundResult(mid, predFound.messageId);
     enrichEntry(cfg, predFound.entry);
     const url = getUrl(predFound.entry);
     const btnIdx = await showDialog(
-      "Odoo Email Importer",
-      "Predecessor email found" + (url ? " at " + url : "") + ". Import this email?",
+      "Odoo Email Connector",
+      "Predecessor email found" +
+        (url ? " at " + url : "") +
+        ". Import this email?",
       [{ title: "Import", value: 0 }],
     );
     if (btnIdx === 0) {
@@ -371,26 +432,42 @@ async function importMessageById(messageId) {
   // Step 3: No predecessor found
   await cacheNotFoundResult(mid);
   const btnIdx = await showDialog(
-    "Odoo Email Importer",
+    "Odoo Email Connector",
     "This email and its predecessor are not in Odoo. How do you want to import it?",
-    [{ title: "As Opportunity (CRM Lead)", value: 0 }, { title: "Generic", value: 1, tooltip: "Might fail on Odoo 19 without Lost Messages module, see https://github.com/joergsteffens/thunderbird2odoo" }],
+    [
+      { title: "As Opportunity (CRM Lead)", value: 0 },
+      {
+        title: "Generic",
+        value: 1,
+        tooltip:
+          "Might fail on Odoo 19 without Lost Messages module, see https://github.com/joergsteffens/thunderbird2odoo",
+      },
+    ],
   );
   if (btnIdx === 0) {
-    await uploadAndShowResult(cfg, "crm.lead", "Email imported as Opportunity (CRM Lead)", decoded, mid);
+    await uploadAndShowResult(
+      cfg,
+      "crm.lead",
+      "Email imported as Opportunity (CRM Lead)",
+      decoded,
+      mid,
+    );
   } else if (btnIdx === 1) {
     await uploadAndShowResult(cfg, false, "Email imported", decoded, mid);
   }
   return mid;
 }
 
-async function verifyMessageById(messageId) {
+async function verifyMessageById(tbMessageId) {
   const cfg = await get_config();
-  const msg = await messenger.messages.get(messageId);
+  const msg = await messenger.messages.get(tbMessageId);
   const mid = unifyMessageId(msg.headerMessageId);
   if (!mid) return null;
 
   const cached = await getCachedResult(mid);
-  console.debug("verifyMessageById: mid=" + mid + " cached=" + JSON.stringify(cached));
+  console.debug(
+    "verifyMessageById: mid=" + mid + " cached=" + JSON.stringify(cached),
+  );
   if (cached?.status === "found" || cached?.status === "parent_found") {
     return cached;
   }
@@ -401,11 +478,13 @@ async function verifyMessageById(messageId) {
     return result;
   }
 
-  const headers = await getHeaders(messageId);
+  const headers = await getHeaders(tbMessageId);
   const predecessorIds = extractPredecessorIdsFromHeaders(headers);
   const predFound = await findPredecessor(cfg, predecessorIds);
   if (predFound) {
-    console.debug("verifyMessageById: predFound.messageId=" + predFound.messageId);
+    console.debug(
+      "verifyMessageById: predFound.messageId=" + predFound.messageId,
+    );
     return await cacheParentFoundResult(mid, predFound.messageId);
   }
   console.debug("verifyMessageById: not found, caching as not_found");
@@ -420,29 +499,44 @@ async function uploadAndShowResult(cfg, model, prefix, decoded, messageId) {
     // message_process returned a thread_id — email was routed successfully.
     let found = null;
     if (messageId) {
-      found = await debugTry("uploadAndShowResult: findMail failed", () => findAndCache(cfg, messageId));
+      found = await debugTry("uploadAndShowResult: findMail failed", () =>
+        findAndCache(cfg, messageId),
+      );
     }
     if (found?.status === "found") {
       await showResult(prefix, found, cfg, true);
     } else {
       // Odoo queued the mail but hasn't indexed it yet — cache with what we have
       if (messageId) await cacheFoundResult(messageId, model, rawResult, null);
-      const r = { status: "found", model, resId: rawResult, odooMessageId: null };
+      const r = {
+        status: "found",
+        model,
+        resId: rawResult,
+        odooMessageId: null,
+      };
       await showResult(prefix, r, cfg, true);
     }
   } else if (rawResult === false) {
     if (messageId) {
-      const found = await debugTry("uploadAndShowResult: findMail failed", () => findAndCache(cfg, messageId));
+      const found = await debugTry("uploadAndShowResult: findMail failed", () =>
+        findAndCache(cfg, messageId),
+      );
       if (found?.status === "found") {
         await showResult("Email already in Odoo (duplicate)", found, cfg, true);
         return;
       }
     }
     if (messageId) await cacheNotFoundResult(messageId);
-    notify("Odoo", "Email not imported: Odoo could not route this email to any model");
+    notify(
+      "Odoo",
+      "Email not imported: Odoo could not route this email to any model",
+    );
   } else {
     if (messageId) await cacheNotFoundResult(messageId);
-    notify("Odoo", "Email not imported: ignored by Odoo (loop detection or bounce)");
+    notify(
+      "Odoo",
+      "Email not imported: ignored by Odoo (loop detection or bounce)",
+    );
   }
 }
 
@@ -468,13 +562,20 @@ browser.menus.onClicked.addListener(async (info, tab) => {
     }
     if (tab?.id) {
       try {
-        const displayed = await messenger.messageDisplay.getDisplayedMessage(tab.id);
+        const displayed = await messenger.messageDisplay.getDisplayedMessage(
+          tab.id,
+        );
         if (displayed) {
-          const inSelection = messages.some(function (m) { return m.id === displayed.id; });
+          const inSelection = messages.some(function (m) {
+            return m.id === displayed.id;
+          });
           if (!inSelection) await verifyMessageById(displayed.id);
         }
       } catch (err) {
-        console.debug("right-click verify: error checking displayed message:", err);
+        console.debug(
+          "right-click verify: error checking displayed message:",
+          err,
+        );
       }
     }
     notify("Odoo", "Verify complete for " + messages.length + " messages");
@@ -488,8 +589,20 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 
 async function getSenderTabMessageId(sender) {
   if (!sender?.tab?.id) return null;
-  const message = await messenger.messageDisplay.getDisplayedMessage(sender.tab.id);
+  const message = await messenger.messageDisplay.getDisplayedMessage(
+    sender.tab.id,
+  );
   return message?.id ?? null;
+}
+
+function ago(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+function calcSinceDate(maxAgeDays) {
+  return maxAgeDays > 0 ? ago(maxAgeDays) : null;
 }
 
 async function syncFromOdoo(forceFull = false) {
@@ -499,25 +612,29 @@ async function syncFromOdoo(forceFull = false) {
   const maxAgeDays = prefs.maxAgeDays ?? 365;
   const syncLimit = prefs.syncLimit ?? 10000;
 
-  const ago = (days) => { const d = new Date(); d.setDate(d.getDate() - days); return d; };
   let since;
   if (forceFull) {
-    since = maxAgeDays > 0 ? ago(maxAgeDays) : null;
+    since = calcSinceDate(maxAgeDays);
   } else {
     const lastSync = await getLastSync();
     if (lastSync) {
       since = new Date(lastSync);
       since.setDate(since.getDate() - 1);
     } else {
-      since = maxAgeDays > 0 ? ago(maxAgeDays) : null;
+      since = calcSinceDate(maxAgeDays);
     }
   }
 
   let count = 0;
   try {
     const estimated = await countMailMessages(cfg, since);
-    const sinceLabel = since ? "since " + since.toISOString().slice(0, 10) : "all";
-    notify("Odoo", "Syncing from Odoo (" + sinceLabel + "): " + estimated + " messages…");
+    const sinceLabel = since
+      ? "since " + since.toISOString().slice(0, 10)
+      : "all";
+    notify(
+      "Odoo",
+      "Syncing from Odoo (" + sinceLabel + "): " + estimated + " messages…",
+    );
 
     const results = await searchMailMessages(cfg, since, syncLimit);
     const entries = {};
@@ -536,7 +653,8 @@ async function syncFromOdoo(forceFull = false) {
     const truncated = syncLimit !== 0 && results.length >= syncLimit;
     if (!truncated) await setLastSync(new Date().toISOString());
     const total = await getCacheSize();
-    let msg = count + " messages retrieved from Odoo. Total cache size: " + total + ".";
+    let msg =
+      count + " messages retrieved from Odoo. Total cache size: " + total + ".";
     if (truncated) msg += " (truncated, not all results fetched)";
     notify("Odoo", msg);
     return { ok: true, count, truncated };
@@ -560,14 +678,25 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
 
     if (msg.action === "getOdooStatus") {
       const msgId = await getSenderTabMessageId(sender);
-      if (!msgId) { console.debug("getOdooStatus: no msgId"); return null; }
+      if (!msgId) {
+        console.debug("getOdooStatus: no msgId");
+        return null;
+      }
       const m = await messenger.messages.get(msgId);
       const mid = unifyMessageId(m.headerMessageId);
-      if (!mid) { console.debug("getOdooStatus: no mid"); return null; }
+      if (!mid) {
+        console.debug("getOdooStatus: no mid");
+        return null;
+      }
       const cfg = await requireConfig();
-      if (!cfg) { console.debug("getOdooStatus: not configured"); return null; }
+      if (!cfg) {
+        console.debug("getOdooStatus: not configured");
+        return null;
+      }
       let entry = await getCachedResult(mid);
-      console.debug("getOdooStatus: mid=" + mid + " cached=" + JSON.stringify(entry));
+      console.debug(
+        "getOdooStatus: mid=" + mid + " cached=" + JSON.stringify(entry),
+      );
       if (!entry) {
         const headers = await getHeaders(msgId);
         const pids = extractPredecessorIdsFromHeaders(headers);
@@ -578,7 +707,10 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
             break;
           }
         }
-        if (!entry) { console.debug("getOdooStatus: no entry found"); return null; }
+        if (!entry) {
+          console.debug("getOdooStatus: no entry found");
+          return null;
+        }
       }
       entry = await enrichFull(cfg, entry);
       console.debug("getOdooStatus: returning entry=" + JSON.stringify(entry));
@@ -586,7 +718,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
     }
 
     if (msg.action === "verifyMessage") {
-      const msgId = msg.messageId || await getSenderTabMessageId(sender);
+      const msgId = msg.messageId || (await getSenderTabMessageId(sender));
       if (!msgId) return null;
       const cfg = await requireConfig();
       if (!cfg) return { ok: false, error: "Not configured" };
@@ -596,7 +728,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
         if (result) {
           await enrichFull(cfg, result);
           console.debug("verifyMessage: enriched=" + JSON.stringify(result));
-          const url = result.modelUrl || result.messageUrl || result.parentUrl;
+          const url = getUrl(result);
           if (url) result.urlCopied = await copyToClipboard(url);
         }
         return result;
@@ -606,7 +738,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
     }
 
     if (msg.action === "addMessage") {
-      const msgId = msg.messageId || await getSenderTabMessageId(sender);
+      const msgId = msg.messageId || (await getSenderTabMessageId(sender));
       if (!msgId) return null;
       const cfg = await requireConfig();
       if (!cfg) return { ok: false, error: "Not configured" };
@@ -615,7 +747,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
       const entry = await getCachedResult(mid);
       await enrichFull(cfg, entry);
       entry.success = entry?.status === "found";
-      const url = entry?.modelUrl || entry?.messageUrl || entry?.parentUrl;
+      const url = getUrl(entry);
       if (url && entry.success) entry.urlCopied = await copyToClipboard(url);
       return entry || null;
     }
@@ -624,10 +756,9 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
       const cfg = await requireConfig();
       if (!cfg) return { ok: false, error: "Not configured" };
       const maxAgeDays = msg.maxAgeDays ?? 365;
-      const since = maxAgeDays > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - maxAgeDays); return d; })() : new Date(0);
-      const sinceStr = since.toISOString().replace("Z", "");
+      const since = calcSinceDate(maxAgeDays);
       try {
-        const count = await countMailMessages(cfg, sinceStr);
+        const count = await countMailMessages(cfg, since);
         return { ok: true, count };
       } catch (err) {
         return errorResult(err);
@@ -643,7 +774,6 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
       return await syncFromOdoo();
     }
 
-
     if (msg.action === "getCacheInfo") {
       const size = await getCacheSize();
       const lastSync = await getLastSync();
@@ -657,7 +787,9 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
 async function registerDisplayScript() {
   const ns = browser.messageDisplayScripts || messenger.messageDisplayScripts;
   if (!ns) {
-    console.debug("registerDisplayScript: messageDisplayScripts API not available");
+    console.debug(
+      "registerDisplayScript: messageDisplayScripts API not available",
+    );
     return;
   }
   try {

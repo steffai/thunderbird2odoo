@@ -6,13 +6,14 @@
 
 - **Email status bar**: a colored status bar now appears in the message reader when viewing an email that has been checked against Odoo (via the right-click menu). Shows whether the email (or its predecessor) was found in Odoo, with buttons to open, verify, or add the email. Status is cached per email and persists across restarts.
 - **Sync from Odoo**: bulk-fetches message IDs from Odoo (within a configurable max-age window) into the local cache. Supports incremental sync (since last sync) and a configurable limit.
-- **Verify multiple messages**: select multiple emails and verify them in batch; the menu label reflects the count (e.g. *Verify 3 messages*).
+- **Verify multiple messages**: select multiple emails and verify them in batch; the menu label reflects the count (e.g. _Verify 3 messages_).
 - **Count button**: preview how many messages Odoo will return for the current max-age setting before syncing.
 - **Clear Odoo Cache**: button in the options page to invalidate all cached statuses.
 - **Options sync section**: max age, sync limit, cache entry count, last sync time (auto-refreshes via `storage.onChanged`).
 
 ### Changes
 
+- **Renamed to Odoo Email Connector**: the add-on name now better reflects its broader scope — import, verify, sync, and inline status display.
 - **Internal**: refactored `handleOdooImporter` into reusable `importMessageById` and `verifyMessageById` functions.
 - **Clipboard copy**: moved entirely to background script (display scripts cannot access `navigator.clipboard`; requires `clipboardWrite` permission).
 - **`search_count` endpoint**: used for estimated message counts before sync.
@@ -35,11 +36,11 @@
 ### Changes
 
 - The plugin is now able for query Odoo about emails, show information and propose matching actions.
-- **Optional host permissions**: replaced the broad `<all_urls>` install-time permission with `optional_permissions` (`*://*/*`); the user is now explicitly prompted for consent when clicking *Test connection* in the options page (per AMO review)
+- **Optional host permissions**: replaced the broad `<all_urls>` install-time permission with `optional_permissions` (`*://*/*`); the user is now explicitly prompted for consent when clicking _Test connection_ in the options page (per AMO review)
 
 ### Features
 
-- **Connection test info**: a successful *Test connection* now shows the authenticated user's login (in monospace) with display name in braces, e.g. `Connection successful as admin (Mitchell Admin)`
+- **Connection test info**: a successful _Test connection_ now shows the authenticated user's login (in monospace) with display name in braces, e.g. `Connection successful as admin (Mitchell Admin)`
 
 ## 0.3.0
 

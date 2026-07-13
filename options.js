@@ -16,9 +16,19 @@ const countResult = document.getElementById("countResult");
 const cacheInfo = document.getElementById("cacheInfo");
 
 const syncSettingsForm = document.getElementById("syncSettings");
-const syncFields = [maxAgeInput, syncLimitInput, saveSyncBtn, clearCacheBtn, syncNowBtn, countBtn, syncSettingsForm];
+const syncFields = [
+  maxAgeInput,
+  syncLimitInput,
+  saveSyncBtn,
+  clearCacheBtn,
+  syncNowBtn,
+  countBtn,
+  syncSettingsForm,
+];
 function setSyncEnabled(enabled) {
-  syncFields.forEach(el => { if (el) el.disabled = !enabled; });
+  syncFields.forEach((el) => {
+    if (el) el.disabled = !enabled;
+  });
 }
 
 let lastValidHash = null;
@@ -43,7 +53,13 @@ function invalidate() {
 }
 
 (async () => {
-  const stored = await browser.storage.local.get(["url", "db", "apikey", "maxAgeDays", "syncLimit"]);
+  const stored = await browser.storage.local.get([
+    "url",
+    "db",
+    "apikey",
+    "maxAgeDays",
+    "syncLimit",
+  ]);
   if (stored.url) urlInput.value = stored.url;
   if (stored.db) dbInput.value = stored.db;
   if (stored.apikey) apiKeyInput.value = stored.apikey;
@@ -55,7 +71,10 @@ function invalidate() {
 })();
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && ("odooMailCache" in changes || "lastOdooSync" in changes)) {
+  if (
+    area === "local" &&
+    ("odooMailCache" in changes || "lastOdooSync" in changes)
+  ) {
     refreshCacheInfo();
   }
 });
@@ -108,7 +127,9 @@ testBtn.addEventListener("click", async () => {
 
 clearCacheBtn.addEventListener("click", async () => {
   const result = await browser.runtime.sendMessage({ action: "clearCache" });
-  status.textContent = result?.ok ? "Odoo cache cleared" : "Failed to clear cache";
+  status.textContent = result?.ok
+    ? "Odoo cache cleared"
+    : "Failed to clear cache";
   refreshCacheInfo();
 });
 
@@ -131,7 +152,8 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
     status.textContent = "Settings saved";
     setSyncEnabled(true);
   } else {
-    status.textContent = "Saved, but setup failed: " + (result?.error || "unknown error");
+    status.textContent =
+      "Saved, but setup failed: " + (result?.error || "unknown error");
   }
 });
 
@@ -149,8 +171,13 @@ countBtn.addEventListener("click", async () => {
   countResult.textContent = "Counting…";
   const raw = parseInt(maxAgeInput.value, 10);
   const maxAgeDays = Number.isNaN(raw) ? 365 : Math.max(0, raw);
-  const result = await browser.runtime.sendMessage({ action: "countOdooMessages", maxAgeDays });
-  countResult.textContent = result?.ok ? result.count + " messages" : "Error: " + (result?.error || "unknown");
+  const result = await browser.runtime.sendMessage({
+    action: "countOdooMessages",
+    maxAgeDays,
+  });
+  countResult.textContent = result?.ok
+    ? result.count + " messages"
+    : "Error: " + (result?.error || "unknown");
   countBtn.disabled = false;
 });
 

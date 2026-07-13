@@ -1,6 +1,6 @@
-# Odoo Email Importer
+# Odoo Email Connector
 
-<img src="thunderbird2odoo.svg" alt="Odoo Email Importer logo" width="200" height="200">
+<img src="thunderbird2odoo.svg" alt="Odoo Email Connector logo" width="200" height="200">
 
 This Thunderbird add-on imports emails into the ERP software [Odoo](https://www.odoo.com) (version 19+) and shows their Odoo status inline in the message reader.
 
@@ -16,19 +16,19 @@ This Thunderbird add-on imports emails into the ERP software [Odoo](https://www.
 * Odoo:
   * Create an API key: *User → My Preferences → Security → API Keys → Add API key* (see [Odoo documentation](https://www.odoo.com/documentation/19.0/developer/reference/external_api.html#configuration))
 * Thunderbird:
-  * Install the add-on [Odoo Email Importer](https://addons.thunderbird.net/thunderbird/addon/odoo-email-importer/)
+  * Install the add-on [Odoo Email Connector](https://addons.thunderbird.net/thunderbird/addon/odoo-email-importer/)
   * Open the add-on's **Options** page:
     * Set **Odoo URL** to your Odoo server.
     * Set **API Key**.
     * Set **Database** if required (normally not).
-    * ![Odoo Email Importer: options window](images/OdooEmailImporter-configure.png)
+    * ![Odoo Email Connector: options window](images/OdooEmailImporter-configure.png)
   * Click *Test connection* — you will be prompted to grant host permission. If successful, click *Save*.
 
 ## Usage
 
 ### Context Menu
 
-Right-click one or more emails in the message list and select **Odoo Email Importer**:
+Right-click one or more emails in the message list and select **Odoo Email Connector**:
 
 | Menu item   | Action |
 |-------------|--------|

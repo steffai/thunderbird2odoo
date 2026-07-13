@@ -12,7 +12,7 @@ function renderMessage(text) {
 
 (async () => {
   const params = new URLSearchParams(location.search);
-  document.title = params.get("title") || "Odoo Email Importer";
+  document.title = params.get("title") || "Odoo Email Connector";
   renderMessage(params.get("message") || "");
 
   const win = await browser.windows.getCurrent();
@@ -25,14 +25,20 @@ function renderMessage(text) {
 
   const container = document.getElementById("buttons");
   for (const btn of buttons) {
-    container.appendChild(createButton(btn.title, () => {
-      browser.runtime.sendMessage({
-        action: "dialogChoice",
-        windowId: win.id,
-        choice: btn.value,
-      });
-      window.close();
-    }, btn.tooltip));
+    container.appendChild(
+      createButton(
+        btn.title,
+        () => {
+          browser.runtime.sendMessage({
+            action: "dialogChoice",
+            windowId: win.id,
+            choice: btn.value,
+          });
+          window.close();
+        },
+        btn.tooltip,
+      ),
+    );
   }
 
   if (buttons.length === 0) {

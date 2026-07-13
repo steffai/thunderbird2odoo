@@ -8,19 +8,20 @@ function renderBar(d, container) {
   if (d && d.status) {
     window._odooDebug = JSON.stringify(d);
   } else {
-    console.debug("renderBar: no data", d); return null;
+    console.debug("renderBar: no data", d);
+    return null;
   }
 
   var b = document.createElement("div");
   b.id = "odoo-status-bar";
-  b.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-family:-moz-info,sans-serif;border-bottom:1px solid #ccc;background:#f5f5f5";
+  b.style.cssText =
+    "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-family:-moz-info,sans-serif;border-bottom:1px solid #ccc;background:#f5f5f5";
 
   var l = document.createElement("span");
 
   var btnRow = document.createElement("div");
   btnRow.style.cssText = "width:100%;display:flex;gap:6px";
 
-  
   function appendStatusElement(l, status) {
     var e = document.createElement("span");
     if (status === "found") {
@@ -37,7 +38,7 @@ function renderBar(d, container) {
     }
     l.appendChild(e);
   }
-  
+
   function appendUrls(l, modelUrl, messageUrl) {
     if (modelUrl) {
       l.appendChild(makeLink(modelUrl));
@@ -60,7 +61,13 @@ function renderBar(d, container) {
   if (d.status === "found") {
     renderStatusLine(l, d.status, null, d.modelUrl, d.messageUrl);
   } else if (d.status === "parent_found") {
-    renderStatusLine(l, d.status, "not found, only parent ", d.parentModelUrl, d.parentMessageUrl);
+    renderStatusLine(
+      l,
+      d.status,
+      "not found, only parent ",
+      d.parentModelUrl,
+      d.parentMessageUrl,
+    );
   } else if (d.status === "not_found") {
     renderStatusLine(l, d.status, "not found", null, null);
   }
@@ -72,10 +79,29 @@ function renderBar(d, container) {
     l.appendChild(a);
   }
 
-  var btnStyle = "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
-  btnRow.appendChild(createButton("Verify", function () { doAction("verifyMessage"); }, null, btnStyle));
+  var btnStyle =
+    "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
+  btnRow.appendChild(
+    createButton(
+      "Verify",
+      function () {
+        doAction("verifyMessage");
+      },
+      null,
+      btnStyle,
+    ),
+  );
   if (d.status === "parent_found" || d.status === "not_found") {
-    btnRow.appendChild(createButton("Add", function () { doAction("addMessage"); }, null, btnStyle));
+    btnRow.appendChild(
+      createButton(
+        "Add",
+        function () {
+          doAction("addMessage");
+        },
+        null,
+        btnStyle,
+      ),
+    );
   }
 
   b.appendChild(l);
@@ -85,32 +111,45 @@ function renderBar(d, container) {
 }
 
 function doAction(action) {
-  messenger.runtime.sendMessage({ action: action }).then(function (r) {
-    if (r && r.status) {
-      if (action === "addMessage" && !r.success) {
-        _lastAction = null;
-      } else {
-        _lastAction = action === "verifyMessage" ? "verified" : "added";
-        if (r.urlCopied) _lastAction += ", URL copied";
-      }
-      _ignoreNextCacheChange = true;
-      var container = document.getElementById("messagepane") || document.body;
-      renderBar(r, container);
-      return;
-    }
-    refreshBar();
-  }, function () {
-    refreshBar();
-  }).catch(function () {});
+  messenger.runtime
+    .sendMessage({ action: action })
+    .then(
+      function (r) {
+        if (r && r.status) {
+          if (action === "addMessage" && !r.success) {
+            _lastAction = null;
+          } else {
+            _lastAction = action === "verifyMessage" ? "verified" : "added";
+            if (r.urlCopied) _lastAction += ", URL copied";
+          }
+          _ignoreNextCacheChange = true;
+          var container =
+            document.getElementById("messagepane") || document.body;
+          renderBar(r, container);
+          return;
+        }
+        refreshBar();
+      },
+      function () {
+        refreshBar();
+      },
+    )
+    .catch(function () {});
 }
 
 function refreshBar() {
-  messenger.runtime.sendMessage({ action: "getOdooStatus" }).then(function (data) {
-    var container = document.getElementById("messagepane") || document.body;
-    renderBar(data, container);
-  }, function (err) {
-    console.debug("refreshBar error:", err);
-  }).catch(function () {});
+  messenger.runtime
+    .sendMessage({ action: "getOdooStatus" })
+    .then(
+      function (data) {
+        var container = document.getElementById("messagepane") || document.body;
+        renderBar(data, container);
+      },
+      function (err) {
+        console.debug("refreshBar error:", err);
+      },
+    )
+    .catch(function () {});
 }
 
 messenger.runtime.onMessage.addListener(function (msg) {
