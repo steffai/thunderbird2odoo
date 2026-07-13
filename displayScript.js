@@ -1,6 +1,7 @@
 var _lastAction = null;
 var _ignoreNextCacheChange = false;
 var _pendingAction = false;
+const envelopeSymbol = "\u2709";
 
 function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
@@ -46,8 +47,7 @@ function renderBar(d, container) {
       l.appendChild(document.createTextNode(" "));
     }
     if (messageUrl && messageUrl !== modelUrl) {
-      l.appendChild(makeLink(messageUrl));
-      l.appendChild(document.createTextNode(" "));
+      l.appendChild(makeIconLink(envelopeSymbol, messageUrl));
     }
   }
 
