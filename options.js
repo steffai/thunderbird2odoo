@@ -160,8 +160,9 @@ document.getElementById("settings").addEventListener("submit", async (e) => {
 saveSyncBtn.addEventListener("click", async () => {
   const raw = parseInt(maxAgeInput.value, 10);
   const maxAgeDays = Number.isNaN(raw) ? 365 : Math.max(0, raw);
-  const syncLimit = parseInt(syncLimitInput.value, 10);
-  await browser.storage.local.set({ maxAgeDays, syncLimit: syncLimit || 0 });
+  const rawLimit = parseInt(syncLimitInput.value, 10);
+  const syncLimit = Number.isNaN(rawLimit) ? 0 : Math.max(0, rawLimit);
+  await browser.storage.local.set({ maxAgeDays, syncLimit });
   status.textContent = "Sync settings saved";
   refreshCacheInfo();
 });

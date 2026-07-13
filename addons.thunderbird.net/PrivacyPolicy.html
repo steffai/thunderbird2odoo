@@ -4,20 +4,25 @@ add-on does not collect, track, or transmit personal data to any third party.
 <b>Data Access</b>
 
 The add-on accesses email content, headers, and attachments
-<strong>only when explicitly triggered by the user</strong>
-via the Thunderbird context menu. Accessed data is used solely for the purpose
-of importing the selected email into the user's own Odoo server.
+<strong>when explicitly triggered by the user</strong>
+via the Thunderbird context menu (import, verify, and sync actions).
+Additionally, when viewing an email, the add-on automatically reads the message
+identifier (Message-ID header) to look up cached Odoo status (see below).
+Accessed data is used solely for the purpose of importing or verifying emails
+against the user's own Odoo server.
 <br /><br />
-When viewing an email, the add-on automatically reads the message identifier
-(Message-ID header) to look up the Odoo status from the local cache and display
-the status bar. No data is transmitted during this process; only locally cached
-information is used.
+When viewing an email, the add-on automatically reads the Message-ID header to
+look up the Odoo status from the local cache and display the status bar. No data
+is transmitted during this process; only locally cached information is used.
 
 <b>Data Transmission</b>
 
-Email data is transmitted directly from Thunderbird to the Odoo server
-configured by the user. No data is sent to the add-on developer or to any
-external service other than the configured Odoo instance.
+Email data and Message-IDs are transmitted directly from Thunderbird to the Odoo
+server configured by the user. No data is sent to the add-on developer or to any
+external service other than the configured Odoo instance. Transmission occurs
+during explicit user actions (import, verify) and during the user-initiated
+<em>Sync from Odoo</em> feature, which fetches message status from the Odoo
+server in the background.
 
 <b>Local Storage</b>
 
@@ -30,7 +35,7 @@ The add-on stores configuration data locally in Thunderbird, such as:
   <li>User-selected configuration options</li>
 </ul>
 
-This information is stored locally using Thunderbird’s extension storage and is
+This information is stored locally using Thunderbird's extension storage and is
 never shared with third parties.
 
 <b>Third-Party Services</b>
@@ -40,6 +45,9 @@ telemetry services.
 
 <b>User Control</b>
 
-All actions performed by the add-on require explicit user interaction. No emails
-are accessed or transmitted automatically or in the background. Removing the
-add-on will remove all locally stored configuration data.
+Import and verify actions require explicit user interaction. The
+<em>Sync from Odoo</em> action is triggered by the user and then runs in the
+background to fetch message status from the Odoo server. When viewing an email,
+the Message-ID header is read automatically to display cached Odoo status (no
+data is transmitted during this automatic lookup). Removing the add-on will
+remove all locally stored configuration data.

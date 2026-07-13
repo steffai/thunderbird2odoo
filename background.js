@@ -264,7 +264,7 @@ async function setup() {
   });
 
   browser.menus.create({
-    id: "odoo-import",
+    id: MENU_ID_IMPORT,
     title: "Import this email",
     parentId: MENU_ID_IMPORTER,
     contexts: ["message_list"],
@@ -778,11 +778,12 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
       const mid = await importMessageById(msgId);
       if (!mid) return null;
       const entry = await getCachedResult(mid);
+      if (!entry) return null;
       await enrichFull(cfg, entry);
-      entry.success = entry?.status === "found";
+      entry.success = entry.status === "found";
       const url = getUrl(entry);
       if (url && entry.success) entry.urlCopied = await copyToClipboard(url);
-      return entry || null;
+      return entry;
     }
 
     if (msg.action === "countOdooMessages") {
