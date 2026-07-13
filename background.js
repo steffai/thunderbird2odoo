@@ -7,6 +7,7 @@ import {
   testOdooConnection,
   getConnectionInfo,
   findMail,
+  findMails,
   buildOdooUrl,
   searchMailMessages,
   countMailMessages,
@@ -551,6 +552,37 @@ async function handleOdooImporter(info) {
   }
 }
 
+async function verifyMessages(tbMessageIds) {
+  const cfg = await get_config();
+  const entries = [];
+  for (const id of tbMessageIds) {
+    const m = await messenger.messages.get(id);
+    const mid = unifyMessageId(m.headerMessageId);
+    if (mid) entries.push({ tbId: id, mid });
+  }
+  if (entries.length === 0) return;
+
+  const found = await findMails(
+    cfg,
+    entries.map((e) => e.mid),
+  );
+  for (const e of entries) {
+    const r = found[e.mid];
+    if (r) {
+      await cacheFoundResult(e.mid, r.model, r.resId, r.odooMessageId);
+    } else {
+      const headers = await getHeaders(e.tbId);
+      const predecessorIds = extractPredecessorIdsFromHeaders(headers);
+      const predFound = await findPredecessor(cfg, predecessorIds);
+      if (predFound) {
+        await cacheParentFoundResult(e.mid, predFound.messageId);
+      } else {
+        await cacheNotFoundResult(e.mid);
+      }
+    }
+  }
+}
+
 browser.menus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === MENU_ID_IMPORT) {
     await handleOdooImporter(info);
@@ -558,9 +590,7 @@ browser.menus.onClicked.addListener(async (info, tab) => {
     const messages = info.selectedMessages?.messages;
     if (!messages?.length) return;
     notify("Odoo", "Verifying " + messages.length + " messages…");
-    for (const msg of messages) {
-      await verifyMessageById(msg.id);
-    }
+    await verifyMessages(messages.map((m) => m.id));
     if (tab?.id) {
       try {
         const displayed = await messenger.messageDisplay.getDisplayedMessage(
@@ -584,9 +614,9 @@ browser.menus.onClicked.addListener(async (info, tab) => {
     await syncFromOdoo();
   }
   if (tab?.id) {
-    browser.tabs.sendMessage(tab.id, { action: "refreshOdooStatus" }).catch(
-      function () {},
-    );
+    browser.tabs
+      .sendMessage(tab.id, { action: "refreshOdooStatus" })
+      .catch(function () {});
   }
 });
 
