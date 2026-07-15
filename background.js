@@ -8,7 +8,8 @@ import {
   getConnectionInfo,
   findMail,
   findMails,
-  buildOdooUrl,
+  combineUrl,
+  normalizeBaseUrl,
   searchMailMessages,
   countMailMessages,
   unifyMessageId,
@@ -75,12 +76,17 @@ async function cacheNotFoundResult(entryId) {
   return entry;
 }
 
+function odooUrl(baseUrl, slug) {
+  return combineUrl(baseUrl, "odoo", slug);
+}
+
 function enrichEntry(cfg, entry) {
   if (!entry) return null;
+  entry.baseUrl = normalizeBaseUrl(cfg.url);
   if (entry.odooMessageId)
-    entry.messageUrl = buildOdooUrl(cfg, "mail.message", entry.odooMessageId);
+    entry.messageSlug = "mail.message/" + entry.odooMessageId;
   if (entry.model && entry.resId)
-    entry.modelUrl = buildOdooUrl(cfg, entry.model, entry.resId);
+    entry.slug = entry.model + "/" + entry.resId;
   return entry;
 }
 
@@ -88,16 +94,9 @@ async function enrichWithParentUrl(cfg, entry) {
   if (!entry || !entry.parentMessageId) return entry;
   const parentEntry = await getCachedResult(entry.parentMessageId);
   if (parentEntry) {
-    entry.parentModelUrl = buildOdooUrl(
-      cfg,
-      parentEntry.model,
-      parentEntry.resId,
-    );
-    entry.parentMessageUrl = buildOdooUrl(
-      cfg,
-      "mail.message",
-      parentEntry.odooMessageId,
-    );
+    entry.parentSlug = parentEntry.model + "/" + parentEntry.resId;
+    if (parentEntry.odooMessageId)
+      entry.parentMessageSlug = "mail.message/" + parentEntry.odooMessageId;
   }
   return entry;
 }
@@ -112,12 +111,10 @@ function getUrl(entry) {
   if (!entry) {
     return null;
   }
-  return (
-    entry.modelUrl ||
-    entry.messageUrl ||
-    entry.parentModelUrl ||
-    entry.parentMessageUrl
-  );
+  if (entry.slug) return odooUrl(entry.baseUrl, entry.slug);
+  if (entry.messageSlug) return odooUrl(entry.baseUrl, entry.messageSlug);
+  if (entry.parentSlug) return odooUrl(entry.baseUrl, entry.parentSlug);
+  return null;
 }
 
 async function findPredecessor(cfg, pids) {
@@ -167,9 +164,9 @@ function buildNotification(prefix, r) {
       prefix + (r.odooMessageId ? " (message " + r.odooMessageId + ")" : "");
   }
 
-  if (r.modelUrl) message += "\n" + r.modelUrl;
-  if (r.messageUrl && r.messageUrl !== r.modelUrl)
-    message += "\n" + r.messageUrl;
+  if (r.slug) message += "\n" + odooUrl(r.baseUrl, r.slug);
+  if (r.messageSlug && r.messageSlug !== r.slug)
+    message += "\n" + odooUrl(r.baseUrl, r.messageSlug);
 
   return { title, message };
 }
@@ -178,7 +175,11 @@ async function showResult(prefix, r, cfg, sticky = false) {
   enrichEntry(cfg, r);
   const n = buildNotification(prefix, r);
   let message = n.message;
-  const url = r.modelUrl || r.messageUrl;
+  const url = r.slug
+    ? odooUrl(r.baseUrl, r.slug)
+    : r.messageSlug
+      ? odooUrl(r.baseUrl, r.messageSlug)
+      : null;
   if (url) {
     const copied = await copyToClipboard(url);
     if (copied) {

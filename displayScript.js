@@ -41,36 +41,42 @@ function renderBar(d, container) {
     l.appendChild(e);
   }
 
-  function appendUrls(l, modelUrl, messageUrl) {
-    if (modelUrl) {
-      l.appendChild(makeLink(modelUrl));
+  function appendUrls(l, baseUrl, slug, messageSlug) {
+    if (slug) {
+      var a = makeLink(combineUrl(baseUrl, "odoo", slug));
+      a.textContent = slug;
+      l.appendChild(a);
       l.appendChild(document.createTextNode(" "));
     }
-    if (messageUrl && messageUrl !== modelUrl) {
-      l.appendChild(makeIconLink(envelopeSymbol, messageUrl));
+    if (messageSlug && messageSlug !== slug) {
+      var url = combineUrl(baseUrl, "odoo", messageSlug);
+      var b = makeIconLink(envelopeSymbol, url);
+      b.title = messageSlug;
+      l.appendChild(b);
     }
   }
 
-  function renderStatusLine(l, status, label, modelUrl, messageUrl) {
+  function renderStatusLine(l, status, label, baseUrl, slug, messageSlug) {
     if (label) l.appendChild(document.createTextNode(label));
-    appendUrls(l, modelUrl, messageUrl);
+    appendUrls(l, baseUrl, slug, messageSlug);
     appendStatusElement(l, status);
   }
 
   l.appendChild(document.createTextNode("Odoo: "));
 
   if (d.status === "found") {
-    renderStatusLine(l, d.status, null, d.modelUrl, d.messageUrl);
+    renderStatusLine(
+      l, d.status, null,
+      d.baseUrl, d.slug, d.messageSlug,
+    );
   } else if (d.status === "parent_found") {
     renderStatusLine(
-      l,
-      d.status,
+      l, d.status,
       "not found, only parent ",
-      d.parentModelUrl,
-      d.parentMessageUrl,
+      d.baseUrl, d.parentSlug, d.parentMessageSlug,
     );
   } else if (d.status === "not_found") {
-    renderStatusLine(l, d.status, "not found", null, null);
+    renderStatusLine(l, d.status, "not found", null, null, null);
   }
 
   if (_lastAction) {
