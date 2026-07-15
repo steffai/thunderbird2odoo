@@ -61,3 +61,17 @@ test("normalizeUrl returns base URL unchanged when called without parts", () => 
     "https://odoo.example.com",
   );
 });
+
+test("normalizeUrl coerces numeric parts to strings", () => {
+  assert.equal(
+    normalizeUrl("https://odoo.example.com", "mail.message", 42),
+    "https://odoo.example.com/mail.message/42",
+  );
+});
+
+test("normalizeUrl handles mixed model string and numeric id", () => {
+  assert.equal(
+    normalizeUrl("https://odoo.example.com", "crm.lead", 99),
+    "https://odoo.example.com/crm.lead/99",
+  );
+});

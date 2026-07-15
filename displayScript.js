@@ -2,6 +2,14 @@ var _lastAction = null;
 var _ignoreNextCacheChange = false;
 var _pendingAction = false;
 
+function normalizeUrl(base, ...parts) {
+  var url = base.replace(/\/+$/, "");
+  for (var i = 0; i < parts.length; i++) {
+    url += "/" + String(parts[i]).replace(/^\/+|\/+$/g, "");
+  }
+  return url;
+}
+
 function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
   if (old) old.remove();

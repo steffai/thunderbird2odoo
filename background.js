@@ -110,6 +110,7 @@ function getUrl(entry) {
   if (entry.modelSlug) return normalizeUrl(entry.baseUrl, entry.modelSlug);
   if (entry.messageSlug) return normalizeUrl(entry.baseUrl, entry.messageSlug);
   if (entry.parentModelSlug) return normalizeUrl(entry.baseUrl, entry.parentModelSlug);
+  if (entry.parentMessageSlug) return normalizeUrl(entry.baseUrl, entry.parentMessageSlug);
   return null;
 }
 
