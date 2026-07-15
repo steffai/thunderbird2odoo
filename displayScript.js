@@ -50,7 +50,9 @@ function renderBar(d, container) {
 
   function badgeStyle(primary) {
     var base = "display:inline-flex;align-items:center;padding:1px 5px;border:1px solid ButtonBorder;border-radius:3px;text-decoration:none;cursor:pointer;background:ButtonFace;color:ButtonText";
-    return primary ? base + ";font-weight:600;font-size:13px" : base + ";font-size:11px";
+    return primary
+      ? base + ";font:caption"
+      : base + ";font:small-caption;font-style:italic";
   }
 
   function appendUrls(l, baseUrl, modelSlug, messageSlug) {
@@ -108,7 +110,7 @@ function renderBar(d, container) {
   }
 
   var btnStyle =
-    "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
+    "padding:2px 10px;cursor:pointer;border:1px solid ButtonBorder;border-radius:3px;background:ButtonFace;color:ButtonText;white-space:nowrap;font:caption";
   btnRow.appendChild(
     createButton(
       "Verify",
