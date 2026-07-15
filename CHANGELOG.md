@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.1
+
+### Changes
+
+- **Refactored URL handling**: replaced modelUrl/messageUrl with baseUrl+slug pattern, renamed combineUrl→normalizeUrl, added normalizeUrl unit tests.
+- **Status bar styling**: badges now use system colors (ButtonFace/ButtonBorder/ButtonText) and system fonts (caption/small-caption/status-bar) for dark mode compatibility.
+- **Removed dead code**: makeIconLink and buildOdooUrl removed.
+- **CI consolidated**: single CI workflow runs lint, builds XPI, and creates a release on v* tag push (via softprops/action-gh-release).
+- **Fixed parentMessageSlug fallback**: getUrl now considers parentMessageSlug.
+- **Fixed numeric ID handling**: normalizeUrl coerces parts to String() for numeric Odoo IDs.
+
+### Fixes
+
+- **AMO review: sync message listener**: `runtime.onMessage` listener is no longer `async` to avoid interfering with other listeners (async listeners always return a Promise, which Thunderbird warns about).
+- **Message sync domain filter**: `buildMailDomain` now uses a complex domain that excludes internal messages and non-Discussion notifications (`message_id != false AND is_internal = false AND (message_type != "notification" OR subtype_id = Discussions)`).
+- **Discussion subtype lookup**: subtype ID is now fetched from Odoo via `mail.message.subtype/search_read` instead of being hardcoded to `1`, with session-level caching.
+- **Mail search**: `findMails` searches only bracketed `[<id>]` format (not `[id, <id>]`), matching Odoo's stored format.
+
 ## 0.6.0
 
 ### Features

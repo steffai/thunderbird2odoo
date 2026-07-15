@@ -8,7 +8,7 @@ import {
   getConnectionInfo,
   findMail,
   findMails,
-  buildOdooUrl,
+  normalizeUrl,
   searchMailMessages,
   countMailMessages,
   unifyMessageId,
@@ -25,14 +25,14 @@ import {
   CACHE_KEY,
 } from "./lib/mailCache.js";
 
-const MENU_ID_IMPORTER = "odoo-importer";
+const MENU_ID_CONNECTOR = "odoo-connector";
 const MENU_ID_IMPORT = "odoo-import";
 const MENU_ID_VERIFY = "odoo-verify";
 const MENU_ID_SYNC = "odoo-sync";
 
 const menuIds = new Set();
 menuIds
-  .add(MENU_ID_IMPORTER)
+  .add(MENU_ID_CONNECTOR)
   .add(MENU_ID_IMPORT)
   .add(MENU_ID_VERIFY)
   .add(MENU_ID_SYNC);
@@ -77,10 +77,11 @@ async function cacheNotFoundResult(entryId) {
 
 function enrichEntry(cfg, entry) {
   if (!entry) return null;
+  entry.baseUrl = normalizeUrl(cfg.url, "odoo");
   if (entry.odooMessageId)
-    entry.messageUrl = buildOdooUrl(cfg, "mail.message", entry.odooMessageId);
+    entry.messageSlug = normalizeUrl("mail.message", entry.odooMessageId);
   if (entry.model && entry.resId)
-    entry.modelUrl = buildOdooUrl(cfg, entry.model, entry.resId);
+    entry.modelSlug = normalizeUrl(entry.model, entry.resId);
   return entry;
 }
 
@@ -88,16 +89,10 @@ async function enrichWithParentUrl(cfg, entry) {
   if (!entry || !entry.parentMessageId) return entry;
   const parentEntry = await getCachedResult(entry.parentMessageId);
   if (parentEntry) {
-    entry.parentModelUrl = buildOdooUrl(
-      cfg,
-      parentEntry.model,
-      parentEntry.resId,
-    );
-    entry.parentMessageUrl = buildOdooUrl(
-      cfg,
-      "mail.message",
-      parentEntry.odooMessageId,
-    );
+    if (parentEntry.odooMessageId)
+      entry.parentMessageSlug = normalizeUrl("mail.message", parentEntry.odooMessageId);
+    if (parentEntry.model && parentEntry.resId)
+      entry.parentModelSlug = normalizeUrl(parentEntry.model, parentEntry.resId);
   }
   return entry;
 }
@@ -112,12 +107,11 @@ function getUrl(entry) {
   if (!entry) {
     return null;
   }
-  return (
-    entry.modelUrl ||
-    entry.messageUrl ||
-    entry.parentModelUrl ||
-    entry.parentMessageUrl
-  );
+  if (entry.modelSlug) return normalizeUrl(entry.baseUrl, entry.modelSlug);
+  if (entry.messageSlug) return normalizeUrl(entry.baseUrl, entry.messageSlug);
+  if (entry.parentModelSlug) return normalizeUrl(entry.baseUrl, entry.parentModelSlug);
+  if (entry.parentMessageSlug) return normalizeUrl(entry.baseUrl, entry.parentMessageSlug);
+  return null;
 }
 
 async function findPredecessor(cfg, pids) {
@@ -167,9 +161,9 @@ function buildNotification(prefix, r) {
       prefix + (r.odooMessageId ? " (message " + r.odooMessageId + ")" : "");
   }
 
-  if (r.modelUrl) message += "\n" + r.modelUrl;
-  if (r.messageUrl && r.messageUrl !== r.modelUrl)
-    message += "\n" + r.messageUrl;
+  if (r.modelSlug) message += "\n" + normalizeUrl(r.baseUrl, r.modelSlug);
+  if (r.messageSlug && r.messageSlug !== r.modelSlug)
+    message += "\n" + normalizeUrl(r.baseUrl, r.messageSlug);
 
   return { title, message };
 }
@@ -178,7 +172,11 @@ async function showResult(prefix, r, cfg, sticky = false) {
   enrichEntry(cfg, r);
   const n = buildNotification(prefix, r);
   let message = n.message;
-  const url = r.modelUrl || r.messageUrl;
+  const url = r.modelSlug
+    ? normalizeUrl(r.baseUrl, r.modelSlug)
+    : r.messageSlug
+      ? normalizeUrl(r.baseUrl, r.messageSlug)
+      : null;
   if (url) {
     const copied = await copyToClipboard(url);
     if (copied) {
@@ -257,7 +255,7 @@ async function setup() {
   };
 
   browser.menus.create({
-    id: MENU_ID_IMPORTER,
+    id: MENU_ID_CONNECTOR,
     title: "Odoo Email Connector",
     contexts: ["message_list"],
     icons: icon,
@@ -266,7 +264,7 @@ async function setup() {
   browser.menus.create({
     id: MENU_ID_IMPORT,
     title: "Import this email",
-    parentId: MENU_ID_IMPORTER,
+    parentId: MENU_ID_CONNECTOR,
     contexts: ["message_list"],
     icons: icon,
   });
@@ -274,7 +272,7 @@ async function setup() {
   browser.menus.create({
     id: MENU_ID_VERIFY,
     title: "Verify",
-    parentId: MENU_ID_IMPORTER,
+    parentId: MENU_ID_CONNECTOR,
     contexts: ["message_list"],
     icons: icon,
   });
@@ -282,7 +280,7 @@ async function setup() {
   browser.menus.create({
     id: MENU_ID_SYNC,
     title: "Sync message status from Odoo",
-    parentId: MENU_ID_IMPORTER,
+    parentId: MENU_ID_CONNECTOR,
     contexts: ["message_list"],
     icons: icon,
   });
@@ -291,7 +289,7 @@ async function setup() {
 browser.menus.onShown.addListener((info) => {
   if (menuIds.size === 0) return;
   const selectedCount = info.selectedMessages?.messages?.length ?? 0;
-  browser.menus.update(MENU_ID_IMPORTER, { visible: selectedCount >= 1 });
+  browser.menus.update(MENU_ID_CONNECTOR, { visible: selectedCount >= 1 });
   browser.menus.update(MENU_ID_IMPORT, { visible: selectedCount === 1 });
   browser.menus.update(MENU_ID_VERIFY, {
     visible: selectedCount >= 1,
@@ -697,124 +695,137 @@ async function syncFromOdoo(forceFull = false) {
   }
 }
 
-browser.runtime.onMessage.addListener(async (msg, sender) => {
+async function handleGetOdooStatus(sender) {
   try {
-    if (msg.action === "testConnection") {
-      const info = await getConnectionInfo(msg.config);
-      return { ok: true, info };
+    const msgId = await getSenderTabMessageId(sender);
+    if (!msgId) {
+      console.debug("getOdooStatus: no msgId");
+      return null;
     }
-
-    if (msg.action === "setup") {
-      await setup();
-      return { ok: true };
+    const m = await messenger.messages.get(msgId);
+    const mid = unifyMessageId(m.headerMessageId);
+    if (!mid) {
+      console.debug("getOdooStatus: no message_id in email");
+      return null;
     }
-
-    if (msg.action === "getOdooStatus") {
-      const msgId = await getSenderTabMessageId(sender);
-      if (!msgId) {
-        console.debug("getOdooStatus: no msgId");
-        return null;
-      }
-      const m = await messenger.messages.get(msgId);
-      const mid = unifyMessageId(m.headerMessageId);
-      if (!mid) {
-        console.debug("getOdooStatus: no mid");
-        return null;
-      }
-      const cfg = await requireConfig();
-      if (!cfg) {
-        console.debug("getOdooStatus: not configured");
-        return null;
-      }
-      let entry = await getCachedResult(mid);
-      console.debug(
-        "getOdooStatus: mid=" + mid + " cached=" + JSON.stringify(entry),
-      );
-      if (!entry) {
-        const headers = await getHeaders(msgId);
-        const pids = extractPredecessorIdsFromHeaders(headers);
-        for (const pid of pids) {
-          const parentEntry = await getCachedResult(pid);
-          if (parentEntry?.status === "found") {
-            entry = await cacheParentFoundResult(mid, pid);
-            break;
-          }
-        }
-        if (!entry) {
-          console.debug("getOdooStatus: no entry found");
-          return null;
+    console.debug("getOdooStatus: mid=" + mid);
+    let entry = await getCachedResult(mid);
+    if (!entry) {
+      const headers = await getHeaders(msgId);
+      const pids = extractPredecessorIdsFromHeaders(headers);
+      for (const pid of pids) {
+        const parentEntry = await getCachedResult(pid);
+        if (parentEntry?.status === "found") {
+          entry = await cacheParentFoundResult(mid, pid);
+          break;
         }
       }
-      entry = await enrichFull(cfg, entry);
-      console.debug("getOdooStatus: returning entry=" + JSON.stringify(entry));
-      return entry;
     }
+    if (!entry) {
+      console.debug("getOdooStatus: no entry found");
+      return null;
+    }
+    const cfg = await requireConfig();
+    if (!cfg) {
+      console.debug("getOdooStatus: not configured");
+      return null;
+    }
+    entry = await enrichFull(cfg, entry);
+    console.debug("getOdooStatus: returning " + JSON.stringify(entry));
+    return entry;
+  } catch (err) {
+    console.debug("getOdooStatus: error", err);
+    return errorResult(err);
+  }
+}
 
-    if (msg.action === "verifyMessage") {
-      const msgId = msg.messageId || (await getSenderTabMessageId(sender));
-      if (!msgId) return null;
-      const cfg = await requireConfig();
-      if (!cfg) return { ok: false, error: "Not configured" };
-      try {
-        const result = await verifyMessageById(msgId);
-        console.debug("verifyMessage: result=" + JSON.stringify(result));
-        if (result) {
-          await enrichFull(cfg, result);
-          console.debug("verifyMessage: enriched=" + JSON.stringify(result));
-          const url = getUrl(result);
-          if (url) result.urlCopied = await copyToClipboard(url);
-        }
-        return result;
-      } catch (err) {
-        return errorResult(err);
-      }
+async function handleVerifyMessage(msg, sender) {
+  const msgId = msg.messageId || (await getSenderTabMessageId(sender));
+  if (!msgId) return null;
+  const cfg = await requireConfig();
+  if (!cfg) return { ok: false, error: "Not configured" };
+  try {
+    const result = await verifyMessageById(msgId);
+    console.debug("verifyMessage: result=" + JSON.stringify(result));
+    if (result) {
+      await enrichFull(cfg, result);
+      console.debug("verifyMessage: enriched=" + JSON.stringify(result));
+      const url = getUrl(result);
+      if (url) result.urlCopied = await copyToClipboard(url);
     }
-
-    if (msg.action === "addMessage") {
-      const msgId = msg.messageId || (await getSenderTabMessageId(sender));
-      if (!msgId) return null;
-      const cfg = await requireConfig();
-      if (!cfg) return { ok: false, error: "Not configured" };
-      const mid = await importMessageById(msgId);
-      if (!mid) return null;
-      const entry = await getCachedResult(mid);
-      if (!entry) return null;
-      await enrichFull(cfg, entry);
-      entry.success = entry.status === "found";
-      const url = getUrl(entry);
-      if (url && entry.success) entry.urlCopied = await copyToClipboard(url);
-      return entry;
-    }
-
-    if (msg.action === "countOdooMessages") {
-      const cfg = await requireConfig();
-      if (!cfg) return { ok: false, error: "Not configured" };
-      const maxAgeDays = msg.maxAgeDays ?? 365;
-      const since = calcSinceDate(maxAgeDays);
-      try {
-        const count = await countMailMessages(cfg, since);
-        return { ok: true, count };
-      } catch (err) {
-        return errorResult(err);
-      }
-    }
-
-    if (msg.action === "clearCache") {
-      await clearAllCache();
-      return { ok: true };
-    }
-
-    if (msg.action === "syncFromOdoo") {
-      return await syncFromOdoo();
-    }
-
-    if (msg.action === "getCacheInfo") {
-      const size = await getCacheSize();
-      const lastSync = await getLastSync();
-      return { size, lastSync };
-    }
+    return result;
   } catch (err) {
     return errorResult(err);
+  }
+}
+
+async function handleAddMessage(msg, sender) {
+  const msgId = msg.messageId || (await getSenderTabMessageId(sender));
+  if (!msgId) return null;
+  const cfg = await requireConfig();
+  if (!cfg) return { ok: false, error: "Not configured" };
+  try {
+    const mid = await importMessageById(msgId);
+    if (!mid) return null;
+    const entry = await getCachedResult(mid);
+    if (!entry) return null;
+    await enrichFull(cfg, entry);
+    entry.success = entry.status === "found";
+    const url = getUrl(entry);
+    if (url && entry.success) entry.urlCopied = await copyToClipboard(url);
+    return entry;
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
+async function handleCountOdooMessages(msg) {
+  const cfg = await requireConfig();
+  if (!cfg) return { ok: false, error: "Not configured" };
+  const maxAgeDays = msg.maxAgeDays ?? 365;
+  const since = calcSinceDate(maxAgeDays);
+  try {
+    const count = await countMailMessages(cfg, since);
+    return { ok: true, count };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
+browser.runtime.onMessage.addListener((msg, sender) => {
+  try {
+    switch (msg.action) {
+      case "testConnection":
+        return getConnectionInfo(msg.config).then((info) => ({ ok: true, info }));
+
+      case "setup":
+        return setup().then(() => ({ ok: true }));
+
+      case "getOdooStatus":
+        return handleGetOdooStatus(sender);
+
+      case "verifyMessage":
+        return handleVerifyMessage(msg, sender);
+
+      case "addMessage":
+        return handleAddMessage(msg, sender);
+
+      case "countOdooMessages":
+        return handleCountOdooMessages(msg);
+
+      case "clearCache":
+        return clearAllCache().then(() => ({ ok: true }));
+
+      case "syncFromOdoo":
+        return syncFromOdoo();
+
+      case "getCacheInfo":
+        return Promise.all([getCacheSize(), getLastSync()]).then(
+          ([size, lastSync]) => ({ size, lastSync }),
+        );
+    }
+  } catch (err) {
+    return Promise.resolve(errorResult(err));
   }
 });
 

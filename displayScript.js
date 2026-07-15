@@ -1,7 +1,14 @@
 var _lastAction = null;
 var _ignoreNextCacheChange = false;
 var _pendingAction = false;
-const envelopeSymbol = "\u2709";
+
+function normalizeUrl(base, ...parts) {
+  var url = base.replace(/\/+$/, "");
+  for (var i = 0; i < parts.length; i++) {
+    url += "/" + String(parts[i]).replace(/^\/+|\/+$/g, "");
+  }
+  return url;
+}
 
 function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
@@ -17,7 +24,7 @@ function renderBar(d, container) {
   var b = document.createElement("div");
   b.id = "odoo-status-bar";
   b.style.cssText =
-    "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-family:-moz-info,sans-serif;border-bottom:1px solid #ccc;background:#f5f5f5";
+    "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font:caption;border-bottom:1px solid ButtonBorder;background:-moz-dialog";
 
   var l = document.createElement("span");
 
@@ -41,47 +48,69 @@ function renderBar(d, container) {
     l.appendChild(e);
   }
 
-  function appendUrls(l, modelUrl, messageUrl) {
-    if (modelUrl) {
-      l.appendChild(makeLink(modelUrl));
+  function badgeStyle(primary) {
+    var base = "display:inline-flex;align-items:center;padding:1px 5px;border:1px solid ButtonBorder;border-radius:3px;text-decoration:none;cursor:pointer;background:ButtonFace;color:ButtonText";
+    return primary
+      ? base + ";font:caption"
+      : base + ";font:small-caption;font-style:italic";
+  }
+
+  function appendUrls(l, baseUrl, modelSlug, messageSlug) {
+    if (modelSlug) {
+      var a = document.createElement("a");
+      a.href = normalizeUrl(baseUrl, modelSlug);
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      a.textContent = modelSlug;
+      a.title = a.href;
+      a.style.cssText = badgeStyle(true);
+      l.appendChild(a);
       l.appendChild(document.createTextNode(" "));
     }
-    if (messageUrl && messageUrl !== modelUrl) {
-      l.appendChild(makeIconLink(envelopeSymbol, messageUrl));
+    if (messageSlug && messageSlug !== modelSlug) {
+      var b = document.createElement("a");
+      b.href = normalizeUrl(baseUrl, messageSlug);
+      b.target = "_blank";
+      b.rel = "noreferrer";
+      b.textContent = messageSlug;
+      b.title = b.href;
+      b.style.cssText = badgeStyle(false);
+      l.appendChild(b);
     }
   }
 
-  function renderStatusLine(l, status, label, modelUrl, messageUrl) {
+  function renderStatusLine(l, status, label, baseUrl, modelSlug, messageSlug) {
     if (label) l.appendChild(document.createTextNode(label));
-    appendUrls(l, modelUrl, messageUrl);
+    appendUrls(l, baseUrl, modelSlug, messageSlug);
     appendStatusElement(l, status);
   }
 
   l.appendChild(document.createTextNode("Odoo: "));
 
   if (d.status === "found") {
-    renderStatusLine(l, d.status, null, d.modelUrl, d.messageUrl);
+    renderStatusLine(
+      l, d.status, null,
+      d.baseUrl, d.modelSlug, d.messageSlug,
+    );
   } else if (d.status === "parent_found") {
     renderStatusLine(
-      l,
-      d.status,
+      l, d.status,
       "not found, only parent ",
-      d.parentModelUrl,
-      d.parentMessageUrl,
+      d.baseUrl, d.parentModelSlug, d.parentMessageSlug,
     );
   } else if (d.status === "not_found") {
-    renderStatusLine(l, d.status, "not found", null, null);
+    renderStatusLine(l, d.status, "not found", null, null, null);
   }
 
   if (_lastAction) {
     var a = document.createElement("span");
     a.textContent = " [" + _lastAction + "]";
-    a.style.cssText = "font-size:11px;color:#888";
+    a.style.cssText = "font:status-bar;color:GrayText";
     l.appendChild(a);
   }
 
   var btnStyle =
-    "padding:2px 10px;font-size:12px;cursor:pointer;border:1px solid #aaa;border-radius:3px;background:#fff;white-space:nowrap";
+    "padding:2px 10px;cursor:pointer;border:1px solid ButtonBorder;border-radius:3px;background:ButtonFace;color:ButtonText;white-space:nowrap;font:caption";
   btnRow.appendChild(
     createButton(
       "Verify",

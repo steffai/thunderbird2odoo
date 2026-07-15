@@ -1,23 +1,36 @@
+name: CI
+
 on:
   push:
   pull_request:
-  release:
-    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     permissions:
       contents: write
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: make check-js
+      - run: npm install -g web-ext@8.3.0
+      - run: web-ext lint --self-hosted
       - run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
       - run: make xpi
       - uses: actions/upload-artifact@v5
         with:
           name: xpi
           path: dist/*.xpi
-      - if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.xpi
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.xpi
+          generate_release_notes: true
