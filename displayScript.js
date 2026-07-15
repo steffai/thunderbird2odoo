@@ -24,7 +24,7 @@ function renderBar(d, container) {
   var b = document.createElement("div");
   b.id = "odoo-status-bar";
   b.style.cssText =
-    "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-family:-moz-info,sans-serif;border-bottom:1px solid #ccc;background:#f5f5f5";
+    "display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 12px;font:caption;border-bottom:1px solid ButtonBorder;background:-moz-dialog";
 
   var l = document.createElement("span");
 
@@ -105,7 +105,7 @@ function renderBar(d, container) {
   if (_lastAction) {
     var a = document.createElement("span");
     a.textContent = " [" + _lastAction + "]";
-    a.style.cssText = "font-size:11px;color:#888";
+    a.style.cssText = "font:status-bar;color:GrayText";
     l.appendChild(a);
   }
 
