@@ -696,42 +696,47 @@ async function syncFromOdoo(forceFull = false) {
 }
 
 async function handleGetOdooStatus(sender) {
-  const msgId = await getSenderTabMessageId(sender);
-  if (!msgId) {
-    console.debug("getOdooStatus: no msgId");
-    return null;
-  }
-  const m = await messenger.messages.get(msgId);
-  const mid = unifyMessageId(m.headerMessageId);
-  if (!mid) {
-    console.debug("getOdooStatus: no message_id in email");
-    return null;
-  }
-  console.debug("getOdooStatus: mid=" + mid);
-  let entry = await getCachedResult(mid);
-  if (!entry) {
-    const headers = await getHeaders(msgId);
-    const pids = extractPredecessorIdsFromHeaders(headers);
-    for (const pid of pids) {
-      const parentEntry = await getCachedResult(pid);
-      if (parentEntry?.status === "found") {
-        entry = await cacheParentFoundResult(mid, pid);
-        break;
+  try {
+    const msgId = await getSenderTabMessageId(sender);
+    if (!msgId) {
+      console.debug("getOdooStatus: no msgId");
+      return null;
+    }
+    const m = await messenger.messages.get(msgId);
+    const mid = unifyMessageId(m.headerMessageId);
+    if (!mid) {
+      console.debug("getOdooStatus: no message_id in email");
+      return null;
+    }
+    console.debug("getOdooStatus: mid=" + mid);
+    let entry = await getCachedResult(mid);
+    if (!entry) {
+      const headers = await getHeaders(msgId);
+      const pids = extractPredecessorIdsFromHeaders(headers);
+      for (const pid of pids) {
+        const parentEntry = await getCachedResult(pid);
+        if (parentEntry?.status === "found") {
+          entry = await cacheParentFoundResult(mid, pid);
+          break;
+        }
       }
     }
+    if (!entry) {
+      console.debug("getOdooStatus: no entry found");
+      return null;
+    }
+    const cfg = await requireConfig();
+    if (!cfg) {
+      console.debug("getOdooStatus: not configured");
+      return null;
+    }
+    entry = await enrichFull(cfg, entry);
+    console.debug("getOdooStatus: returning " + JSON.stringify(entry));
+    return entry;
+  } catch (err) {
+    console.debug("getOdooStatus: error", err);
+    return errorResult(err);
   }
-  if (!entry) {
-    console.debug("getOdooStatus: no entry found");
-    return null;
-  }
-  const cfg = await requireConfig();
-  if (!cfg) {
-    console.debug("getOdooStatus: not configured");
-    return null;
-  }
-  entry = await enrichFull(cfg, entry);
-  console.debug("getOdooStatus: returning " + JSON.stringify(entry));
-  return entry;
 }
 
 async function handleVerifyMessage(msg, sender) {
