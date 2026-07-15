@@ -48,7 +48,7 @@ function renderBar(d, container) {
   function appendUrls(l, baseUrl, modelSlug, messageSlug) {
     if (modelSlug) {
       var a = document.createElement("a");
-      a.href = combineUrl(baseUrl, "odoo", modelSlug);
+      a.href = normalizeUrl(baseUrl, modelSlug);
       a.target = "_blank";
       a.rel = "noreferrer";
       a.textContent = modelSlug;
@@ -59,7 +59,7 @@ function renderBar(d, container) {
     }
     if (messageSlug && messageSlug !== modelSlug) {
       var b = document.createElement("a");
-      b.href = combineUrl(baseUrl, "odoo", messageSlug);
+      b.href = normalizeUrl(baseUrl, messageSlug);
       b.target = "_blank";
       b.rel = "noreferrer";
       b.textContent = messageSlug;
@@ -80,13 +80,13 @@ function renderBar(d, container) {
   if (d.status === "found") {
     renderStatusLine(
       l, d.status, null,
-      d.baseUrl, d.slug, d.messageSlug,
+      d.baseUrl, d.modelSlug, d.messageSlug,
     );
   } else if (d.status === "parent_found") {
     renderStatusLine(
       l, d.status,
       "not found, only parent ",
-      d.baseUrl, d.parentSlug, d.parentMessageSlug,
+      d.baseUrl, d.parentModelSlug, d.parentMessageSlug,
     );
   } else if (d.status === "not_found") {
     renderStatusLine(l, d.status, "not found", null, null, null);

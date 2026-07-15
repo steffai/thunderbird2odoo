@@ -8,8 +8,7 @@ import {
   getConnectionInfo,
   findMail,
   findMails,
-  combineUrl,
-  normalizeBaseUrl,
+  normalizeUrl,
   searchMailMessages,
   countMailMessages,
   unifyMessageId,
@@ -76,17 +75,13 @@ async function cacheNotFoundResult(entryId) {
   return entry;
 }
 
-function odooUrl(baseUrl, slug) {
-  return combineUrl(baseUrl, "odoo", slug);
-}
-
 function enrichEntry(cfg, entry) {
   if (!entry) return null;
-  entry.baseUrl = normalizeBaseUrl(cfg.url);
+  entry.baseUrl = normalizeUrl(cfg.url, "odoo");
   if (entry.odooMessageId)
-    entry.messageSlug = "mail.message/" + entry.odooMessageId;
+    entry.messageSlug = normalizeUrl("mail.message", entry.odooMessageId);
   if (entry.model && entry.resId)
-    entry.slug = entry.model + "/" + entry.resId;
+    entry.modelSlug = normalizeUrl(entry.model, entry.resId);
   return entry;
 }
 
@@ -94,9 +89,10 @@ async function enrichWithParentUrl(cfg, entry) {
   if (!entry || !entry.parentMessageId) return entry;
   const parentEntry = await getCachedResult(entry.parentMessageId);
   if (parentEntry) {
-    entry.parentSlug = parentEntry.model + "/" + parentEntry.resId;
     if (parentEntry.odooMessageId)
-      entry.parentMessageSlug = "mail.message/" + parentEntry.odooMessageId;
+      entry.parentMessageSlug = normalizeUrl("mail.message", parentEntry.odooMessageId);
+    if (parentEntry.model && parentEntry.resId)
+      entry.parentModelSlug = normalizeUrl(parentEntry.model, parentEntry.resId);
   }
   return entry;
 }
@@ -111,9 +107,9 @@ function getUrl(entry) {
   if (!entry) {
     return null;
   }
-  if (entry.slug) return odooUrl(entry.baseUrl, entry.slug);
-  if (entry.messageSlug) return odooUrl(entry.baseUrl, entry.messageSlug);
-  if (entry.parentSlug) return odooUrl(entry.baseUrl, entry.parentSlug);
+  if (entry.modelSlug) return normalizeUrl(entry.baseUrl, entry.modelSlug);
+  if (entry.messageSlug) return normalizeUrl(entry.baseUrl, entry.messageSlug);
+  if (entry.parentModelSlug) return normalizeUrl(entry.baseUrl, entry.parentModelSlug);
   return null;
 }
 
@@ -164,9 +160,9 @@ function buildNotification(prefix, r) {
       prefix + (r.odooMessageId ? " (message " + r.odooMessageId + ")" : "");
   }
 
-  if (r.slug) message += "\n" + odooUrl(r.baseUrl, r.slug);
-  if (r.messageSlug && r.messageSlug !== r.slug)
-    message += "\n" + odooUrl(r.baseUrl, r.messageSlug);
+  if (r.modelSlug) message += "\n" + normalizeUrl(r.baseUrl, r.modelSlug);
+  if (r.messageSlug && r.messageSlug !== r.modelSlug)
+    message += "\n" + normalizeUrl(r.baseUrl, r.messageSlug);
 
   return { title, message };
 }
@@ -175,10 +171,10 @@ async function showResult(prefix, r, cfg, sticky = false) {
   enrichEntry(cfg, r);
   const n = buildNotification(prefix, r);
   let message = n.message;
-  const url = r.slug
-    ? odooUrl(r.baseUrl, r.slug)
+  const url = r.modelSlug
+    ? normalizeUrl(r.baseUrl, r.modelSlug)
     : r.messageSlug
-      ? odooUrl(r.baseUrl, r.messageSlug)
+      ? normalizeUrl(r.baseUrl, r.messageSlug)
       : null;
   if (url) {
     const copied = await copyToClipboard(url);
