@@ -61,18 +61,22 @@ record.
 
 <b>Usage</b>
 
+<p>
+The add-on never contacts the Odoo server automatically.
+Server requests are only made when explicitly triggered by the user:
+clicking <em>Verify</em> or <em>Add</em> in the status bar,
+or selecting <em>Verify</em>, <em>Import this email</em> or
+<em>Sync from Odoo</em> from the right-click menu.
+</p>
+
 <ul>
   <li>
-    <strong>Email status bar</strong> — When viewing an email, a status bar at
-    the top shows whether it is known in Odoo. Click the Odoo links to open the
-    record.
-
-    The operation behind it will only query the local cache. It will not
-    contact the Odoo server. The status bar will only be displayed when
-    information is found in the cache. Update the cache by
-    <em>Verify</em> (search specific message IDs in Odoo) or
-    <em>Sync</em> (retrieve the message IDs of all messages stored in Odoo and
-    store them in the local cache).
+    <strong>Email status bar</strong> — When viewing an email, a status bar
+    may appear at the top of the message pane. It only displays information
+    from the local cache — viewing an email never triggers an Odoo server
+    request. If nothing is cached for the current email, the status bar is
+    not shown, keeping performance impact minimal for non-Odoo emails.
+    Click the Odoo links to open the record.
     <ul>
       <li>
         Status

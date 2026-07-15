@@ -16,7 +16,7 @@ This Thunderbird add-on imports emails into the ERP software [Odoo](https://www.
 * Odoo:
   * Create an API key: *User → My Preferences → Security → API Keys → Add API key* (see [Odoo documentation](https://www.odoo.com/documentation/19.0/developer/reference/external_api.html#configuration))
 * Thunderbird:
-  * Install the add-on [Odoo Email Connector](https://addons.thunderbird.net/thunderbird/addon/odoo-email-importer/)
+  * Install the add-on [Odoo Email Connector](https://addons.thunderbird.net/thunderbird/addon/odoo-email-connector/)
   * Open the add-on's **Options** page:
     * Set **Odoo URL** to your Odoo server.
     * Set **API Key**.
@@ -26,9 +26,17 @@ This Thunderbird add-on imports emails into the ERP software [Odoo](https://www.
 
 ## Usage
 
+The add-on never contacts the Odoo server automatically. Server requests are only made when explicitly triggered by the user:
+
+- clicking **Verify** or **Add** in the status bar
+- selecting **Verify** or **Import this email** from the right-click menu
+- selecting **Sync from Odoo** from the right-click menu
+
 ### Context Menu
 
 Right-click one or more emails in the message list and select **Odoo Email Connector**:
+
+![Odoo Email Connector: Messages Context Menu](images/OdooEmailConnector-messages-menu.png)
 
 | Menu item   | Action |
 |-------------|--------|
@@ -38,15 +46,22 @@ Right-click one or more emails in the message list and select **Odoo Email Conne
 
 ### Status Bar
 
-When viewing an email, a colored status bar appears at the top of the message pane:
+When viewing an email, a colored status bar may appear at the top of the message pane. It only
+displays information from the local cache — viewing an email never triggers an Odoo server request.
+If nothing is cached for the current email, the status bar is not shown and no server request is made,
+keeping performance impact minimal for non-Odoo emails.
 
-- **Green ●** — email found in Odoo (URL shown, click to open)
-- **Amber ●** — email not found, but a parent/reply predecessor was found in Odoo
-- **Red ✕** — email and predecessors not found in Odoo
+- message found in Odoo
+  - ![found (partner)](images/OdooEmailConnector-statusbar-found-partner.png)
+  - ![found (sale order)](images/OdooEmailConnector-statusbar-found-sale_order.png)
+- message not found, but a parent/reply predecessor was found in Odoo
+  - ![not found, but parent found](images/OdooEmailConnector-statusbar-parent_found.png)
+- message and predecessors not found in Odoo
+  - ![not found](images/OdooEmailConnector-statusbar-not_found.png)
 
 Buttons in the bar:
 - **Verify** — re-check this email against Odoo
-- **Add** — import the email into Odoo (shown for *not found* / *parent found* only)
+- **Add** — import the email into Odoo
 
 Results are cached per message and persist across restarts.
 
