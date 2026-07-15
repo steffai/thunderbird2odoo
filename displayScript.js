@@ -1,7 +1,6 @@
 var _lastAction = null;
 var _ignoreNextCacheChange = false;
 var _pendingAction = false;
-const envelopeSymbol = "\u2709";
 
 function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
@@ -41,24 +40,38 @@ function renderBar(d, container) {
     l.appendChild(e);
   }
 
-  function appendUrls(l, baseUrl, slug, messageSlug) {
-    if (slug) {
-      var a = makeLink(combineUrl(baseUrl, "odoo", slug));
-      a.textContent = slug;
+  function badgeStyle(primary) {
+    var base = "display:inline-flex;align-items:center;padding:1px 5px;border:1px solid ButtonBorder;border-radius:3px;text-decoration:none;cursor:pointer;background:ButtonFace;color:ButtonText";
+    return primary ? base + ";font-weight:600;font-size:13px" : base + ";font-size:11px";
+  }
+
+  function appendUrls(l, baseUrl, modelSlug, messageSlug) {
+    if (modelSlug) {
+      var a = document.createElement("a");
+      a.href = combineUrl(baseUrl, "odoo", modelSlug);
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      a.textContent = modelSlug;
+      a.title = a.href;
+      a.style.cssText = badgeStyle(true);
       l.appendChild(a);
       l.appendChild(document.createTextNode(" "));
     }
-    if (messageSlug && messageSlug !== slug) {
-      var url = combineUrl(baseUrl, "odoo", messageSlug);
-      var b = makeIconLink(envelopeSymbol, url);
-      b.title = messageSlug;
+    if (messageSlug && messageSlug !== modelSlug) {
+      var b = document.createElement("a");
+      b.href = combineUrl(baseUrl, "odoo", messageSlug);
+      b.target = "_blank";
+      b.rel = "noreferrer";
+      b.textContent = messageSlug;
+      b.title = b.href;
+      b.style.cssText = badgeStyle(false);
       l.appendChild(b);
     }
   }
 
-  function renderStatusLine(l, status, label, baseUrl, slug, messageSlug) {
+  function renderStatusLine(l, status, label, baseUrl, modelSlug, messageSlug) {
     if (label) l.appendChild(document.createTextNode(label));
-    appendUrls(l, baseUrl, slug, messageSlug);
+    appendUrls(l, baseUrl, modelSlug, messageSlug);
     appendStatusElement(l, status);
   }
 
