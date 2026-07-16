@@ -649,6 +649,7 @@ async function syncFromOdoo(forceFull = false) {
   } else {
     const lastSync = await getLastSync();
     if (lastSync) {
+      // set since to lastSync - 1 day.
       since = new Date(lastSync);
       since.setDate(since.getDate() - 1);
     } else {
