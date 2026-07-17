@@ -189,7 +189,8 @@ async function showResult(prefix, r, cfg, sticky = false) {
 let _cachedConfig = null;
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local") _cachedConfig = null;
+  if (area === "local" && ["url", "db", "apikey"].some((k) => k in changes))
+    _cachedConfig = null;
 });
 
 async function get_config() {
