@@ -186,8 +186,17 @@ async function showResult(prefix, r, cfg, sticky = false) {
   notify(n.title, message, sticky);
 }
 
+let _cachedConfig = null;
+
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && ["url", "db", "apikey"].some((k) => k in changes))
+    _cachedConfig = null;
+});
+
 async function get_config() {
-  return browser.storage.local.get(["url", "db", "apikey"]);
+  if (_cachedConfig) return _cachedConfig;
+  _cachedConfig = await browser.storage.local.get(["url", "db", "apikey"]);
+  return _cachedConfig;
 }
 
 function errorResult(err) {
@@ -465,14 +474,6 @@ async function verifyMessageById(tbMessageId) {
   const mid = unifyMessageId(msg.headerMessageId);
   if (!mid) return null;
 
-  const cached = await getCachedResult(mid);
-  console.debug(
-    "verifyMessageById: mid=" + mid + " cached=" + JSON.stringify(cached),
-  );
-  if (cached?.status === "found" || cached?.status === "parent_found") {
-    return cached;
-  }
-
   const result = await findAndCache(cfg, mid);
   console.debug("verifyMessageById: findMail result=" + JSON.stringify(result));
   if (result.status === "found") {
@@ -649,6 +650,7 @@ async function syncFromOdoo(forceFull = false) {
   } else {
     const lastSync = await getLastSync();
     if (lastSync) {
+      // set since to lastSync - 1 day.
       since = new Date(lastSync);
       since.setDate(since.getDate() - 1);
     } else {
