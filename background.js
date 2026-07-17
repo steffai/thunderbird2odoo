@@ -186,8 +186,16 @@ async function showResult(prefix, r, cfg, sticky = false) {
   notify(n.title, message, sticky);
 }
 
+let _cachedConfig = null;
+
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local") _cachedConfig = null;
+});
+
 async function get_config() {
-  return browser.storage.local.get(["url", "db", "apikey"]);
+  if (_cachedConfig) return _cachedConfig;
+  _cachedConfig = await browser.storage.local.get(["url", "db", "apikey"]);
+  return _cachedConfig;
 }
 
 function errorResult(err) {
