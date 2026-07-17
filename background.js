@@ -473,14 +473,6 @@ async function verifyMessageById(tbMessageId) {
   const mid = unifyMessageId(msg.headerMessageId);
   if (!mid) return null;
 
-  const cached = await getCachedResult(mid);
-  console.debug(
-    "verifyMessageById: mid=" + mid + " cached=" + JSON.stringify(cached),
-  );
-  if (cached?.status === "found" || cached?.status === "parent_found") {
-    return cached;
-  }
-
   const result = await findAndCache(cfg, mid);
   console.debug("verifyMessageById: findMail result=" + JSON.stringify(result));
   if (result.status === "found") {
