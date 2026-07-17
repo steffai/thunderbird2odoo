@@ -14,12 +14,9 @@ function renderBar(d, container) {
   var old = document.getElementById("odoo-status-bar");
   if (old) old.remove();
 
-  if (d && d.status) {
-    window._odooDebug = JSON.stringify(d);
-  } else {
-    console.debug("renderBar: no data", d);
-    return null;
-  }
+  if (!d || !d.status) return null;
+
+  window._odooDebug = JSON.stringify(d);
 
   var b = document.createElement("div");
   b.id = "odoo-status-bar";
@@ -179,6 +176,7 @@ function refreshBar() {
     .sendMessage({ action: "getOdooStatus" })
     .then(
       function (data) {
+        if (!data || !data.status) return;
         var container = document.getElementById("messagepane") || document.body;
         renderBar(data, container);
       },
