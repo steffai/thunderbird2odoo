@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Odoo Email Connector",
   "version": "0.6.1",
-  "description": "Transfer selected email to Odoo",
+  "description": "Links Thunderbird emails to Odoo objects. Status bar shows Odoo records, with verify/import/sync actions.",
   "browser_specific_settings": {
     "gecko": {
       "id": "@thunderbird2odoo.bareos.joergsteffens",

@@ -5,10 +5,68 @@
     <title>Odoo Email Connector – Settings</title>
     <style>
       body {
-        font-family: sans-serif;
-        max-width: 32rem;
-        margin: 2rem auto;
-        padding: 0 1rem;
+        max-width: 36rem;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        color: #222;
+        line-height: 1.5;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+      }
+      .tagline {
+        margin: 0 0 1.5rem;
+        color: #555;
+        font-size: 0.9em;
+      }
+      .usage {
+        background: #f0f7ff;
+        border: 1px solid #b8d4f0;
+        border-radius: 4px;
+        padding: 0.6rem 0.8rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.85em;
+      }
+      .usage strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+      .usage ul {
+        margin: 0;
+        padding-left: 1.2rem;
+      }
+      .usage li {
+        margin-bottom: 0.15rem;
+      }
+      .usage em {
+        font-style: normal;
+        background: #dce8f5;
+        padding: 0.1em 0.3em;
+        border-radius: 2px;
+        font-size: 0.95em;
+      }
+      .notice {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 0.6rem 0.8rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.85em;
+      }
+      .notice strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+      .notice ul {
+        margin: 0;
+        padding-left: 1.2rem;
       }
       label {
         display: inline-block;
@@ -19,6 +77,8 @@
         width: 100%;
         padding: 0.3rem;
         box-sizing: border-box;
+        border: 1px solid #bbb;
+        border-radius: 3px;
       }
       input[type="number"] {
         width: 6rem;
@@ -29,6 +89,8 @@
       }
       hr {
         margin: 1.5rem 0;
+        border: none;
+        border-top: 1px solid #ddd;
       }
       .info {
         font-size: 0.9em;
@@ -49,6 +111,35 @@
     </style>
   </head>
   <body>
+    <div class="header">
+      <img src="icons/odoo-48.png" width="48" height="48" alt="" />
+      <h1>Odoo Email Connector</h1>
+    </div>
+    <p class="tagline">
+      Links Thunderbird emails to Odoo objects &mdash; verify, import, and sync
+      message IDs with your Odoo instance.
+    </p>
+
+    <div class="usage">
+      <strong>How it works</strong>
+      <ul>
+        <li><em>Status bar</em> &mdash; when viewing an email, shows whether it is known in Odoo (cache only, no server request). Only appears if the email has cached data; otherwise hidden.</li>
+        <li><em>Verify</em> &mdash; checks if the email exists on the Odoo server</li>
+        <li><em>Add / Import</em> &mdash; uploads the email to Odoo</li>
+        <li><em>Sync from Odoo</em> &mdash; batch-caches message IDs for instant status display</li>
+      </ul>
+    </div>
+
+    <div class="notice">
+      <strong>Data exchanged with your Odoo server:</strong>
+      No data is sent automatically &mdash; only when you click a button.
+      <ul>
+        <li>Verify: queries the server with the email's <em>Message-ID</em>, <em>In-Reply-To ID</em> and <em>Reference IDs</em> headers</li>
+        <li>Add / Import: uploads the complete email including headers, body, and attachments</li>
+        <li>Sync: downloads email metadata (<em>Message-ID</em>, <em>Odoo model name</em>, <em>record ID</em>, <em>Odoo message ID</em>) &mdash; no email content transferred</li>
+      </ul>
+    </div>
+
     <h2>Odoo Connection</h2>
 
     <form id="settings">
