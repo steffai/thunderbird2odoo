@@ -1,6 +1,12 @@
 var _lastAction = null;
 var _ignoreNextCacheChange = false;
 var _pendingAction = false;
+var _container = null;
+
+function getContainer() {
+  if (!_container) _container = document.getElementById("messagepane") || document.body;
+  return _container;
+}
 
 function normalizeUrl(base, ...parts) {
   var url = base.replace(/\/+$/, "");
@@ -153,9 +159,7 @@ function doAction(action) {
             if (r.urlCopied) _lastAction += ", URL copied";
           }
           _ignoreNextCacheChange = true;
-          var container =
-            document.getElementById("messagepane") || document.body;
-          renderBar(r, container);
+          renderBar(r, getContainer());
           return;
         }
         refreshBar();
@@ -177,8 +181,7 @@ function refreshBar() {
     .then(
       function (data) {
         if (!data || !data.status) return;
-        var container = document.getElementById("messagepane") || document.body;
-        renderBar(data, container);
+        renderBar(data, getContainer());
       },
       function (err) {
         console.debug("refreshBar error:", err);
