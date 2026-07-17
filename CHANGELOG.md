@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.2
+
+### Changes
+
+- **Options page redesigned**: added logo, tagline, usage summary, and data-privacy notice in a sidebar layout.
+- **Config caching**: config is now cached in memory after first read and invalidated on `storage.onChanged`, avoiding repeated `storage.local` IPC calls.
+- **Manifest description**: updated to better describe the add-on.
+
+### Fixes
+
+- **Verify not updating cache**: fixed a bug where the verify action did not always refresh the local cache entry for the verified message.
+
 ## 0.6.1
 
 ### Changes

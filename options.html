@@ -108,6 +108,18 @@
         padding: 0.1em 0.3em;
         border-radius: 3px;
       }
+      .main {
+        display: flex;
+        gap: 1.5rem;
+      }
+      .main > .forms {
+        flex: 1;
+        min-width: 0;
+      }
+      .main > .sidebar {
+        width: 18rem;
+        flex-shrink: 0;
+      }
     </style>
   </head>
   <body>
@@ -120,25 +132,8 @@
       message IDs with your Odoo instance.
     </p>
 
-    <div class="usage">
-      <strong>How it works</strong>
-      <ul>
-        <li><em>Status bar</em> &mdash; when viewing an email, shows whether it is known in Odoo (cache only, no server request). Only appears if the email has cached data; otherwise hidden.</li>
-        <li><em>Verify</em> &mdash; checks if the email exists on the Odoo server</li>
-        <li><em>Add / Import</em> &mdash; uploads the email to Odoo</li>
-        <li><em>Sync from Odoo</em> &mdash; batch-caches message IDs for instant status display</li>
-      </ul>
-    </div>
-
-    <div class="notice">
-      <strong>Data exchanged with your Odoo server:</strong>
-      No data is sent automatically &mdash; only when you click a button.
-      <ul>
-        <li>Verify: queries the server with the email's <em>Message-ID</em>, <em>In-Reply-To ID</em> and <em>Reference IDs</em> headers</li>
-        <li>Add / Import: uploads the complete email including headers, body, and attachments</li>
-        <li>Sync: downloads email metadata (<em>Message-ID</em>, <em>Odoo model name</em>, <em>record ID</em>, <em>Odoo message ID</em>) &mdash; no email content transferred</li>
-      </ul>
-    </div>
+    <div class="main">
+      <div class="forms">
 
     <h2>Odoo Connection</h2>
 
@@ -203,6 +198,32 @@
     <p class="info" id="cacheInfo"></p>
 
     <p id="status"></p>
+
+      </div>
+      <div class="sidebar">
+
+    <div class="usage">
+      <strong>How it works</strong>
+      <ul>
+        <li><em>Status bar</em> &mdash; when viewing an email, shows whether it is known in Odoo (cache only, no server request). Only appears if the email has cached data; otherwise hidden.</li>
+        <li><em>Verify</em> &mdash; checks if the email exists on the Odoo server</li>
+        <li><em>Add / Import</em> &mdash; uploads the email to Odoo</li>
+        <li><em>Sync from Odoo</em> &mdash; batch-caches message IDs for instant status display</li>
+      </ul>
+    </div>
+
+    <div class="notice">
+      <strong>Data exchanged with your Odoo server:</strong>
+      No data is sent automatically &mdash; only when you click a button.
+      <ul>
+        <li>Verify: queries the server with the email's <em>Message-ID</em>, <em>In-Reply-To ID</em> and <em>Reference IDs</em> headers</li>
+        <li>Add / Import: uploads the complete email including headers, body, and attachments</li>
+        <li>Sync: downloads email metadata (<em>Message-ID</em>, <em>Odoo model name</em>, <em>record ID</em>, <em>Odoo message ID</em>) &mdash; no email content transferred</li>
+      </ul>
+    </div>
+
+      </div>
+    </div>
 
     <script type="module" src="options.js"></script>
   </body>
